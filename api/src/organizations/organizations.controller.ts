@@ -9,7 +9,10 @@ export class OrganizationsController {
   findAll() {
     return this.organizationsService.findAll();
   }
-
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.organizationsService.findOne(id);
+  }
   @Post()
   create(@Body() createDto: { name: string; comment?: string }) {
     return this.organizationsService.create(createDto);

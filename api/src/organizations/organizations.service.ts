@@ -1,19 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Pool } from 'pg';
 
 @Injectable()
 export class OrganizationsService {
-  private pool: Pool;
-
-  constructor() {
-    this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL || 'postgres://postgres:secret@localhost:5432/hr_db',
-    });
-  }
+  constructor(@Inject('PG_POOL') private pool: Pool) {}
 
   async findAll() {
     const res = await this.pool.query('SELECT * FROM organizations WHERE deleted_at IS NULL');
     return res.rows;
+  }
+
+  async findOne(id: string) {
+    const res = await this.pool.query('SELECT * FROM organizations WHERE id = $1 AND deleted_at IS NULL', [id]);
+    if (res.rowCount === 0) throw new NotFoundException('Organization not found');
+    return res.rows[0];
   }
 
   async create(data: { name: string; comment?: string }) {
@@ -24,16 +24,21 @@ export class OrganizationsService {
     return res.rows[0];
   }
 
-  async update(id: string, data: { name?: string; comment?: string }) {
+  async update(id: string, data: any) {
     const res = await this.pool.query(
-      'UPDATE organizations SET name = COALESCE($1, name), comment = COALESCE($2, comment), updated_at = now() WHERE id = $3 AND deleted_at IS NULL RETURNING *',
+      'UPDATE organizations SET name = $1, comment = $2, updated_at = now() WHERE id = $3 AND deleted_at IS NULL RETURNING *',
       [data.name, data.comment, id],
     );
+    if (res.rowCount === 0) throw new NotFoundException('Organization not found');
     return res.rows[0];
   }
 
   async softDelete(id: string) {
-    await this.pool.query('UPDATE organizations SET deleted_at = now() WHERE id = $1', [id]);
+    const res = await this.pool.query(
+      'UPDATE organizations SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL RETURNING *',
+      [id],
+    );
+    if (res.rowCount === 0) throw new NotFoundException('Organization not found');
     return { message: 'Organization soft deleted' };
   }
 }

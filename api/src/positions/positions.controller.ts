@@ -9,6 +9,10 @@ export class PositionsController {
   findAll() {
     return this.positionsService.findAll();
   }
+    @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.positionsService.findOne(id);
+  }
 
   @Post()
   create(@Body() createDto: { name: string }) {

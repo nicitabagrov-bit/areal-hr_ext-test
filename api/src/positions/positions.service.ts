@@ -1,19 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Pool } from 'pg';
 
 @Injectable()
 export class PositionsService {
-  private pool: Pool;
-
-  constructor() {
-    this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL || 'postgres://postgres:secret@localhost:5432/hr_db',
-    });
-  }
+  constructor(@Inject('PG_POOL') private pool: Pool) {}
 
   async findAll() {
     const res = await this.pool.query('SELECT * FROM positions WHERE deleted_at IS NULL');
     return res.rows;
+  }
+
+  async findOne(id: string) {
+    const res = await this.pool.query('SELECT * FROM positions WHERE id = $1 AND deleted_at IS NULL', [id]);
+    if (res.rowCount === 0) throw new NotFoundException('Position not found');
+    return res.rows[0];
   }
 
   async create(data: { name: string }) {
@@ -26,14 +26,19 @@ export class PositionsService {
 
   async update(id: string, data: { name?: string }) {
     const res = await this.pool.query(
-      'UPDATE positions SET name = COALESCE($1, name), updated_at = now() WHERE id = $2 AND deleted_at IS NULL RETURNING *',
+      'UPDATE positions SET name = $1, updated_at = now() WHERE id = $2 AND deleted_at IS NULL RETURNING *',
       [data.name, id],
     );
+    if (res.rowCount === 0) throw new NotFoundException('Position not found');
     return res.rows[0];
   }
 
   async softDelete(id: string) {
-    await this.pool.query('UPDATE positions SET deleted_at = now() WHERE id = $1', [id]);
+    const res = await this.pool.query(
+      'UPDATE positions SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL RETURNING *',
+      [id],
+    );
+    if (res.rowCount === 0) throw new NotFoundException('Position not found');
     return { message: 'Position soft deleted' };
   }
 }

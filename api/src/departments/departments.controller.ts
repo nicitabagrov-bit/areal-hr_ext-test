@@ -9,6 +9,10 @@ export class DepartmentsController {
   findAll() {
     return this.departmentsService.findAll();
   }
+    @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.departmentsService.findOne(id);
+  }
 
   @Post()
   create(@Body() createDto: { name: string; comment?: string; organization_id: string; parent_id?: string }) {
