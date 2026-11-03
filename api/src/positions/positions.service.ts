@@ -25,10 +25,18 @@ export class PositionsService {
   }
 
   async update(id: string, data: { name?: string }) {
-    const res = await this.pool.query(
-      'UPDATE positions SET name = $1, updated_at = now() WHERE id = $2 AND deleted_at IS NULL RETURNING *',
-      [data.name, id],
-    );
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (data.name !== undefined) { fields.push(`name = $${idx++}`); values.push(data.name); }
+
+    if (fields.length === 0) return this.findOne(id);
+
+    values.push(id);
+    const query = `UPDATE positions SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx} AND deleted_at IS NULL RETURNING *`;
+    
+    const res = await this.pool.query(query, values);
     if (res.rowCount === 0) throw new NotFoundException('Position not found');
     return res.rows[0];
   }

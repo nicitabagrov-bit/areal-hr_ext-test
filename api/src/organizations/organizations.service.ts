@@ -25,10 +25,19 @@ export class OrganizationsService {
   }
 
   async update(id: string, data: any) {
-    const res = await this.pool.query(
-      'UPDATE organizations SET name = $1, comment = $2, updated_at = now() WHERE id = $3 AND deleted_at IS NULL RETURNING *',
-      [data.name, data.comment, id],
-    );
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (data.name !== undefined) { fields.push(`name = $${idx++}`); values.push(data.name); }
+    if (data.comment !== undefined) { fields.push(`comment = $${idx++}`); values.push(data.comment); }
+
+    if (fields.length === 0) return this.findOne(id);
+
+    values.push(id);
+    const query = `UPDATE organizations SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx} AND deleted_at IS NULL RETURNING *`;
+    
+    const res = await this.pool.query(query, values);
     if (res.rowCount === 0) throw new NotFoundException('Organization not found');
     return res.rows[0];
   }

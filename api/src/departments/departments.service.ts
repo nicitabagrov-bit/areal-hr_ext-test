@@ -25,10 +25,21 @@ export class DepartmentsService {
   }
 
   async update(id: string, data: any) {
-    const res = await this.pool.query(
-      'UPDATE departments SET name = $1, comment = $2, organization_id = $3, parent_id = $4, updated_at = now() WHERE id = $5 AND deleted_at IS NULL RETURNING *',
-      [data.name, data.comment, data.organization_id, data.parent_id, id],
-    );
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (data.name !== undefined) { fields.push(`name = $${idx++}`); values.push(data.name); }
+    if (data.comment !== undefined) { fields.push(`comment = $${idx++}`); values.push(data.comment); }
+    if (data.organization_id !== undefined) { fields.push(`organization_id = $${idx++}`); values.push(data.organization_id); }
+    if (data.parent_id !== undefined) { fields.push(`parent_id = $${idx++}`); values.push(data.parent_id); }
+
+    if (fields.length === 0) return this.findOne(id);
+
+    values.push(id);
+    const query = `UPDATE departments SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx} AND deleted_at IS NULL RETURNING *`;
+    
+    const res = await this.pool.query(query, values);
     if (res.rowCount === 0) throw new NotFoundException('Department not found');
     return res.rows[0];
   }
