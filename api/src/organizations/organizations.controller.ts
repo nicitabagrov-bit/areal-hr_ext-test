@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { OrganizationsService } from './organizations.service.js'
+import { OrganizationsService } from './organizations.service.js';
+import { CreateOrganizationDto } from './dto/create-organization.dto.js'; // <-- Импорт DTO
 
 @Controller('organizations')
 export class OrganizationsController {
@@ -9,17 +10,19 @@ export class OrganizationsController {
   findAll() {
     return this.organizationsService.findAll();
   }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.organizationsService.findOne(id);
   }
+
   @Post()
-  create(@Body() createDto: { name: string; comment?: string }) {
+  create(@Body() createDto: CreateOrganizationDto) { // <-- Использование DTO
     return this.organizationsService.create(createDto);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDto: { name?: string; comment?: string }) {
+  update(@Param('id') id: string, @Body() updateDto: any) {
     return this.organizationsService.update(id, updateDto);
   }
 
