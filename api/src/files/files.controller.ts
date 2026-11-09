@@ -1,5 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, ParseUUIDPipe, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service.js';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 @Controller('files')
 export class FilesController {
@@ -11,22 +14,50 @@ export class FilesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.filesService.findOne(id);
   }
 
   @Post()
-  create(@Body() createDto: any) {
-    return this.filesService.create(createDto);
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads', // Папка для файлов (создадим ее)
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
+      }
+    }),
+    limits: {
+      fileSize: 5 * 1024 * 1024, // Ограничение 5 МБ
+    },
+    fileFilter: (req, file, cb) => {
+      if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/)) {
+        return cb(new BadRequestException('Only image and PDF files are allowed'), false);
+      }
+      cb(null, true);
+    }
+  }))
+  async create(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+    
+    // Сохраняем в базу путь к файлу и данные
+    return this.filesService.create({
+      employee_id: body.employee_id,
+      name: body.name || file.originalname,
+      file_path: file.path, // Путь, куда multer сохранил файл
+      mime_type: file.mimetype,
+    });
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDto: any) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: any) {
     return this.filesService.update(id, updateDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.filesService.softDelete(id);
   }
 }

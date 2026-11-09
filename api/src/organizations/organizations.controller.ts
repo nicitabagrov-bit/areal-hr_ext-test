@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service.js';
-import { CreateOrganizationDto } from './dto/create-organization.dto.js'; // <-- Импорт DTO
+import { CreateOrganizationDto } from './dto/create-organization.dto.js';
+import { UpdateOrganizationDto } from './dto/update-organization.dto.js';
 
 @Controller('organizations')
 export class OrganizationsController {
@@ -12,22 +13,25 @@ export class OrganizationsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.organizationsService.findOne(id);
   }
 
   @Post()
-  create(@Body() createDto: CreateOrganizationDto) { // <-- Использование DTO
+  create(@Body() createDto: CreateOrganizationDto) {
     return this.organizationsService.create(createDto);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDto: any) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateDto: UpdateOrganizationDto,
+  ) {
     return this.organizationsService.update(id, updateDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.organizationsService.softDelete(id);
   }
 }

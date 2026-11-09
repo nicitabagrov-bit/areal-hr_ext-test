@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Pool } from 'pg';
 
 @Injectable()
@@ -17,6 +17,20 @@ export class DepartmentsService {
   }
 
   async create(data: { name: string; comment?: string; organization_id: string; parent_id?: string }) {
+    // 1. Проверяем, существует ли организация
+    const orgCheck = await this.pool.query('SELECT id FROM organizations WHERE id = $1 AND deleted_at IS NULL', [data.organization_id]);
+    if (orgCheck.rowCount === 0) {
+      throw new BadRequestException('Organization not found');
+    }
+
+    // 2. Проверяем родителя (если он передан)
+    if (data.parent_id) {
+      const parentCheck = await this.pool.query('SELECT id FROM departments WHERE id = $1 AND deleted_at IS NULL', [data.parent_id]);
+      if (parentCheck.rowCount === 0) {
+        throw new BadRequestException('Parent department not found');
+      }
+    }
+
     const res = await this.pool.query(
       'INSERT INTO departments (name, comment, organization_id, parent_id) VALUES ($1, $2, $3, $4) RETURNING *',
       [data.name, data.comment, data.organization_id, data.parent_id || null],
@@ -25,6 +39,18 @@ export class DepartmentsService {
   }
 
   async update(id: string, data: any) {
+    // Если меняется родитель, проверяем, чтобы не было цикла
+    if (data.parent_id) {
+      if (data.parent_id === id) {
+        throw new BadRequestException('Department cannot be its own parent');
+      }
+      
+      const parentCheck = await this.pool.query('SELECT id FROM departments WHERE id = $1 AND deleted_at IS NULL', [data.parent_id]);
+      if (parentCheck.rowCount === 0) {
+        throw new BadRequestException('Parent department not found');
+      }
+    }
+
     const fields = [];
     const values = [];
     let idx = 1;

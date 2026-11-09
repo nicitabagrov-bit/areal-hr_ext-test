@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Pool } from 'pg';
 
 @Injectable()
@@ -17,9 +17,13 @@ export class HrOperationsService {
   }
 
   async create(data: any) {
+    // Проверка сотрудника
+    const empCheck = await this.pool.query('SELECT id FROM employees WHERE id = $1 AND deleted_at IS NULL', [data.employee_id]);
+    if (empCheck.rowCount === 0) throw new BadRequestException('Employee not found');
+
     const res = await this.pool.query(
-      'INSERT INTO hr_operations (employee_id, department_id, position_id, operation_type) VALUES ($1, $2, $3, $4) RETURNING *',
-      [data.employee_id, data.department_id || null, data.position_id || null, data.operation_type],
+      'INSERT INTO hr_operations (employee_id, department_id, position_id, operation_type, salary) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [data.employee_id, data.department_id || null, data.position_id || null, data.operation_type, data.salary || null],
     );
     return res.rows[0];
   }
@@ -29,7 +33,7 @@ export class HrOperationsService {
     const values = [];
     let idx = 1;
 
-    const allowedFields = ['department_id', 'position_id', 'operation_type'];
+    const allowedFields = ['department_id', 'position_id', 'operation_type', 'salary'];
 
     for (const field of allowedFields) {
       if (data[field] !== undefined) {
