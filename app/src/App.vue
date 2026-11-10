@@ -1,6 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
+// --- Функция для вывода ошибок ---
+const showError = (error) => {
+  alert('Ошибка: ' + (error.message || 'Что-то пошло не так'));
+}
+
 // --- Состояние ---
 const activeTab = ref('orgs')
 
@@ -42,190 +47,242 @@ const history = ref([])
 
 // Организации
 const fetchOrganizations = async () => {
-  const res = await fetch('/api/organizations')
-  organizations.value = await res.json()
+  try {
+    const res = await fetch('/api/organizations')
+    organizations.value = await res.json()
+  } catch (error) { showError(error) }
 }
 const createOrganization = async () => {
   if (!newOrgName.value) return
-  await fetch('/api/organizations', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: newOrgName.value })
-  })
-  newOrgName.value = ''
-  fetchOrganizations()
+  try {
+    const res = await fetch('/api/organizations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newOrgName.value })
+    })
+    if (!res.ok) throw new Error('Ошибка создания организации')
+    newOrgName.value = ''
+    fetchOrganizations()
+  } catch (error) { showError(error) }
 }
 const deleteOrganization = async (id) => {
   if (!confirm('Удалить организацию?')) return
-  await fetch(`/api/organizations/${id}`, { method: 'DELETE' })
-  fetchOrganizations()
+  try {
+    const res = await fetch(`/api/organizations/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Ошибка удаления организации')
+    fetchOrganizations()
+  } catch (error) { showError(error) }
 }
 const editOrganization = async (org) => {
   const newName = prompt('Новое название:', org.name)
   if (newName) {
-    await fetch(`/api/organizations/${org.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName })
-    })
-    fetchOrganizations()
+    try {
+      const res = await fetch(`/api/organizations/${org.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName })
+      })
+      if (!res.ok) throw new Error('Ошибка обновления')
+      fetchOrganizations()
+    } catch (error) { showError(error) }
   }
 }
 
 // Отделы
 const fetchDepartments = async () => {
-  const res = await fetch('/api/departments')
-  departments.value = await res.json()
+  try {
+    const res = await fetch('/api/departments')
+    departments.value = await res.json()
+  } catch (error) { showError(error) }
 }
 const createDepartment = async () => {
   if (!newDepName.value || !selectedOrgId.value) return
-  await fetch('/api/departments', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: newDepName.value, organization_id: selectedOrgId.value })
-  })
-  newDepName.value = ''
-  fetchDepartments()
+  try {
+    const res = await fetch('/api/departments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newDepName.value, organization_id: selectedOrgId.value })
+    })
+    if (!res.ok) throw new Error('Ошибка создания отдела')
+    newDepName.value = ''
+    fetchDepartments()
+  } catch (error) { showError(error) }
 }
 const deleteDepartment = async (id) => {
   if (!confirm('Удалить отдел?')) return
-  await fetch(`/api/departments/${id}`, { method: 'DELETE' })
-  fetchDepartments()
+  try {
+    const res = await fetch(`/api/departments/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Ошибка удаления отдела')
+    fetchDepartments()
+  } catch (error) { showError(error) }
 }
 const editDepartment = async (dep) => {
   const newName = prompt('Новое название отдела:', dep.name)
   if (newName) {
-    await fetch(`/api/departments/${dep.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName })
-    })
-    fetchDepartments()
+    try {
+      const res = await fetch(`/api/departments/${dep.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName })
+      })
+      if (!res.ok) throw new Error('Ошибка обновления')
+      fetchDepartments()
+    } catch (error) { showError(error) }
   }
 }
 
 // Должности
 const fetchPositions = async () => {
-  const res = await fetch('/api/positions')
-  positions.value = await res.json()
+  try {
+    const res = await fetch('/api/positions')
+    positions.value = await res.json()
+  } catch (error) { showError(error) }
 }
 const createPosition = async () => {
   if (!newPosName.value) return
-  await fetch('/api/positions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: newPosName.value })
-  })
-  newPosName.value = ''
-  fetchPositions()
+  try {
+    const res = await fetch('/api/positions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newPosName.value })
+    })
+    if (!res.ok) throw new Error('Ошибка создания должности')
+    newPosName.value = ''
+    fetchPositions()
+  } catch (error) { showError(error) }
 }
 const deletePosition = async (id) => {
   if (!confirm('Удалить должность?')) return
-  await fetch(`/api/positions/${id}`, { method: 'DELETE' })
-  fetchPositions()
+  try {
+    const res = await fetch(`/api/positions/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Ошибка удаления')
+    fetchPositions()
+  } catch (error) { showError(error) }
 }
 const editPosition = async (pos) => {
   const newName = prompt('Новое название должности:', pos.name)
   if (newName) {
-    await fetch(`/api/positions/${pos.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName })
-    })
-    fetchPositions()
+    try {
+      const res = await fetch(`/api/positions/${pos.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName })
+      })
+      if (!res.ok) throw new Error('Ошибка обновления')
+      fetchPositions()
+    } catch (error) { showError(error) }
   }
 }
 
 // Сотрудники
 const fetchEmployees = async () => {
-  const res = await fetch('/api/employees')
-  employees.value = await res.json()
+  try {
+    const res = await fetch('/api/employees')
+    employees.value = await res.json()
+  } catch (error) { showError(error) }
 }
 const createEmployee = async () => {
   if (!newEmpLastName.value || !newEmpFirstName.value || !newEmpBirthDate.value) return
-  await fetch('/api/employees', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      last_name: newEmpLastName.value, 
-      first_name: newEmpFirstName.value, 
-      birth_date: newEmpBirthDate.value 
+  try {
+    const res = await fetch('/api/employees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        last_name: newEmpLastName.value, 
+        first_name: newEmpFirstName.value, 
+        birth_date: newEmpBirthDate.value 
+      })
     })
-  })
-  newEmpLastName.value = ''
-  newEmpFirstName.value = ''
-  newEmpBirthDate.value = ''
-  fetchEmployees()
+    if (!res.ok) throw new Error('Ошибка создания сотрудника (проверьте данные)')
+    newEmpLastName.value = ''
+    newEmpFirstName.value = ''
+    newEmpBirthDate.value = ''
+    fetchEmployees()
+  } catch (error) { showError(error) }
 }
 const deleteEmployee = async (id) => {
   if (!confirm('Удалить сотрудника?')) return
-  await fetch(`/api/employees/${id}`, { method: 'DELETE' })
-  fetchEmployees()
+  try {
+    const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Ошибка удаления')
+    fetchEmployees()
+  } catch (error) { showError(error) }
 }
 
 // Файлы
 const fetchFiles = async () => {
-  const res = await fetch('/api/files')
-  files.value = await res.json()
+  try {
+    const res = await fetch('/api/files')
+    files.value = await res.json()
+  } catch (error) { showError(error) }
 }
 const uploadFile = async () => {
   if (!fileInput.value || !fileEmployeeId.value) return
-  
-  const formData = new FormData()
-  formData.append('file', fileInput.value)
-  formData.append('employee_id', fileEmployeeId.value)
-  formData.append('name', fileName.value || 'Scan')
+  try {
+    const formData = new FormData()
+    formData.append('file', fileInput.value)
+    formData.append('employee_id', fileEmployeeId.value)
+    formData.append('name', fileName.value || 'Scan')
 
-  await fetch('/api/files', {
-    method: 'POST',
-    body: formData
-  })
-  
-  fileInput.value = null
-  fileName.value = ''
-  fetchFiles()
+    const res = await fetch('/api/files', { method: 'POST', body: formData })
+    if (!res.ok) throw new Error('Ошибка загрузки файла')
+    
+    fileInput.value = null
+    fileName.value = ''
+    fetchFiles()
+  } catch (error) { showError(error) }
 }
 const handleFileChange = (e) => {
   fileInput.value = e.target.files[0]
 }
 const deleteFile = async (id) => {
   if (!confirm('Удалить файл?')) return
-  await fetch(`/api/files/${id}`, { method: 'DELETE' })
-  fetchFiles()
+  try {
+    const res = await fetch(`/api/files/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Ошибка удаления')
+    fetchFiles()
+  } catch (error) { showError(error) }
 }
 
 // Операции
 const fetchOperations = async () => {
-  const res = await fetch('/api/hr-operations')
-  operations.value = await res.json()
+  try {
+    const res = await fetch('/api/hr-operations')
+    operations.value = await res.json()
+  } catch (error) { showError(error) }
 }
 const createOperation = async () => {
   if (!opEmployeeId.value || !opType.value) return
-  const data = { 
-    employee_id: opEmployeeId.value, 
-    operation_type: opType.value 
-  }
-  if (opSalary.value) data.salary = Number(opSalary.value)
+  try {
+    const data = { employee_id: opEmployeeId.value, operation_type: opType.value }
+    if (opSalary.value) data.salary = Number(opSalary.value)
 
-  await fetch('/api/hr-operations', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  })
-  opEmployeeId.value = ''
-  opSalary.value = ''
-  fetchOperations()
+    const res = await fetch('/api/hr-operations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    if (!res.ok) throw new Error('Ошибка создания операции')
+    opEmployeeId.value = ''
+    opSalary.value = ''
+    fetchOperations()
+  } catch (error) { showError(error) }
 }
 const deleteOperation = async (id) => {
   if (!confirm('Удалить операцию?')) return
-  await fetch(`/api/hr-operations/${id}`, { method: 'DELETE' })
-  fetchOperations()
+  try {
+    const res = await fetch(`/api/hr-operations/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Ошибка удаления')
+    fetchOperations()
+  } catch (error) { showError(error) }
 }
 
 // История
 const fetchHistory = async () => {
-  const res = await fetch('/api/change-history')
-  history.value = await res.json()
+  try {
+    const res = await fetch('/api/change-history')
+    history.value = await res.json()
+  } catch (error) { showError(error) }
 }
 
 // --- Загрузка ---
