@@ -17,15 +17,13 @@ export class DepartmentsService {
   }
 
   async create(data: { name: string; comment?: string; organization_id: string; parent_id?: string }) {
-    // 1. Проверяем, существует ли организация
-    const orgCheck = await this.pool.query('SELECT id FROM organizations WHERE id = $1 AND deleted_at IS NULL', [data.organization_id]);
+    const orgCheck = await this.pool.query('SELECT id FROM organizations WHERE id = $1', [data.organization_id]);
     if (orgCheck.rowCount === 0) {
       throw new BadRequestException('Organization not found');
     }
 
-    // 2. Проверяем родителя (если он передан)
     if (data.parent_id) {
-      const parentCheck = await this.pool.query('SELECT id FROM departments WHERE id = $1 AND deleted_at IS NULL', [data.parent_id]);
+      const parentCheck = await this.pool.query('SELECT id FROM departments WHERE id = $1', [data.parent_id]);
       if (parentCheck.rowCount === 0) {
         throw new BadRequestException('Parent department not found');
       }
@@ -39,15 +37,20 @@ export class DepartmentsService {
   }
 
   async update(id: string, data: any) {
-    // Если меняется родитель, проверяем, чтобы не было цикла
+    // Проверка на цикл
     if (data.parent_id) {
       if (data.parent_id === id) {
         throw new BadRequestException('Department cannot be its own parent');
       }
-      
-      const parentCheck = await this.pool.query('SELECT id FROM departments WHERE id = $1 AND deleted_at IS NULL', [data.parent_id]);
-      if (parentCheck.rowCount === 0) {
-        throw new BadRequestException('Parent department not found');
+
+      let currentParentId = data.parent_id;
+      while (currentParentId) {
+        if (currentParentId === id) {
+          throw new BadRequestException('Cycle detected in department hierarchy');
+        }
+        const res = await this.pool.query('SELECT parent_id FROM departments WHERE id = $1', [currentParentId]);
+        if (res.rowCount === 0) break;
+        currentParentId = res.rows[0]?.parent_id || null;
       }
     }
 
@@ -65,9 +68,16 @@ export class DepartmentsService {
     values.push(id);
     const query = `UPDATE departments SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx} AND deleted_at IS NULL RETURNING *`;
     
-    const res = await this.pool.query(query, values);
-    if (res.rowCount === 0) throw new NotFoundException('Department not found');
-    return res.rows[0];
+    try {
+      const res = await this.pool.query(query, values);
+      if (res.rowCount === 0) throw new NotFoundException('Department not found');
+      return res.rows[0];
+    } catch (error: any) {
+      if (error.code === '23503') {
+        throw new BadRequestException('Cycle detected in department hierarchy');
+      }
+      throw error;
+    }
   }
 
   async softDelete(id: string) {

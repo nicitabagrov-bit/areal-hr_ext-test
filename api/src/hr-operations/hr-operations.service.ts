@@ -17,13 +17,28 @@ export class HrOperationsService {
   }
 
   async create(data: any) {
-    // Проверка сотрудника
+    // 1. Проверка сотрудника
     const empCheck = await this.pool.query('SELECT id FROM employees WHERE id = $1 AND deleted_at IS NULL', [data.employee_id]);
     if (empCheck.rowCount === 0) throw new BadRequestException('Employee not found');
 
+    // 2. Проверка отдела (если передан)
+    if (data.department_id) {
+      const depCheck = await this.pool.query('SELECT id FROM departments WHERE id = $1 AND deleted_at IS NULL', [data.department_id]);
+      if (depCheck.rowCount === 0) throw new BadRequestException('Department not found');
+    }
+
+    // 3. Проверка должности (если передана)
+    if (data.position_id) {
+      const posCheck = await this.pool.query('SELECT id FROM positions WHERE id = $1 AND deleted_at IS NULL', [data.position_id]);
+      if (posCheck.rowCount === 0) throw new BadRequestException('Position not found');
+    }
+
+    // 4. Исправляем salary || null (чтобы 0 сохранялся как 0, а не превращался в null)
+    const salary = data.salary !== undefined ? data.salary : null;
+
     const res = await this.pool.query(
       'INSERT INTO hr_operations (employee_id, department_id, position_id, operation_type, salary) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [data.employee_id, data.department_id || null, data.position_id || null, data.operation_type, data.salary || null],
+      [data.employee_id, data.department_id || null, data.position_id || null, data.operation_type, salary],
     );
     return res.rows[0];
   }

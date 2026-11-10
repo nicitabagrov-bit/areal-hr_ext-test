@@ -1,13 +1,13 @@
-import { IsString, IsNotEmpty, MaxLength, IsOptional, IsDateString, Length, IsEmail } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, IsOptional, IsDateString, Length, IsEmail, Matches, MaxDate } from 'class-validator';
 
 export class CreateEmployeeDto {
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Фамилия не может быть пустой' }) // Запрещает null
   @MaxLength(100)
   last_name: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Имя не может быть пустым' })
   @MaxLength(100)
   first_name: string;
 
@@ -18,11 +18,12 @@ export class CreateEmployeeDto {
 
   @IsDateString()
   @IsNotEmpty()
+  @MaxDate(new Date('2010-01-01'), { message: 'Сотрудник не может быть младше 14 лет' }) // Проверка 2099 года
   birth_date: string;
 
   @IsString()
   @IsOptional()
-  @MaxLength(20)
+  @Matches(/^\+?\d{10,15}$/, { message: 'Неверный формат телефона' }) // Проверка abc
   phone?: string;
 
   @IsEmail()
@@ -32,12 +33,12 @@ export class CreateEmployeeDto {
 
   @IsString()
   @IsOptional()
-  @Length(4, 4)
+  @Matches(/^\d{4}$/, { message: 'Серия паспорта должна быть 4 цифры' }) // Проверка abcd
   passport_series?: string;
 
   @IsString()
   @IsOptional()
-  @Length(6, 6)
+  @Matches(/^\d{6}$/, { message: 'Номер паспорта должен быть 6 цифр' }) // Проверка zzzzzz
   passport_number?: string;
 
   @IsDateString()
@@ -56,31 +57,20 @@ export class CreateEmployeeDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(255)
   reg_region?: string;
-
   @IsString()
   @IsOptional()
-  @MaxLength(255)
   reg_locality?: string;
-
   @IsString()
   @IsOptional()
-  @MaxLength(255)
   reg_street?: string;
-
   @IsString()
   @IsOptional()
-  @MaxLength(20)
   reg_house?: string;
-
   @IsString()
   @IsOptional()
-  @MaxLength(20)
   reg_building?: string;
-
   @IsString()
   @IsOptional()
-  @MaxLength(20)
   reg_apartment?: string;
 }

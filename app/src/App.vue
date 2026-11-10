@@ -55,6 +55,22 @@ const createOrganization = async () => {
   newOrgName.value = ''
   fetchOrganizations()
 }
+const deleteOrganization = async (id) => {
+  if (!confirm('Удалить организацию?')) return
+  await fetch(`/api/organizations/${id}`, { method: 'DELETE' })
+  fetchOrganizations()
+}
+const editOrganization = async (org) => {
+  const newName = prompt('Новое название:', org.name)
+  if (newName) {
+    await fetch(`/api/organizations/${org.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName })
+    })
+    fetchOrganizations()
+  }
+}
 
 // Отделы
 const fetchDepartments = async () => {
@@ -71,6 +87,22 @@ const createDepartment = async () => {
   newDepName.value = ''
   fetchDepartments()
 }
+const deleteDepartment = async (id) => {
+  if (!confirm('Удалить отдел?')) return
+  await fetch(`/api/departments/${id}`, { method: 'DELETE' })
+  fetchDepartments()
+}
+const editDepartment = async (dep) => {
+  const newName = prompt('Новое название отдела:', dep.name)
+  if (newName) {
+    await fetch(`/api/departments/${dep.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName })
+    })
+    fetchDepartments()
+  }
+}
 
 // Должности
 const fetchPositions = async () => {
@@ -86,6 +118,22 @@ const createPosition = async () => {
   })
   newPosName.value = ''
   fetchPositions()
+}
+const deletePosition = async (id) => {
+  if (!confirm('Удалить должность?')) return
+  await fetch(`/api/positions/${id}`, { method: 'DELETE' })
+  fetchPositions()
+}
+const editPosition = async (pos) => {
+  const newName = prompt('Новое название должности:', pos.name)
+  if (newName) {
+    await fetch(`/api/positions/${pos.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName })
+    })
+    fetchPositions()
+  }
 }
 
 // Сотрудники
@@ -107,6 +155,11 @@ const createEmployee = async () => {
   newEmpLastName.value = ''
   newEmpFirstName.value = ''
   newEmpBirthDate.value = ''
+  fetchEmployees()
+}
+const deleteEmployee = async (id) => {
+  if (!confirm('Удалить сотрудника?')) return
+  await fetch(`/api/employees/${id}`, { method: 'DELETE' })
   fetchEmployees()
 }
 
@@ -135,6 +188,11 @@ const uploadFile = async () => {
 const handleFileChange = (e) => {
   fileInput.value = e.target.files[0]
 }
+const deleteFile = async (id) => {
+  if (!confirm('Удалить файл?')) return
+  await fetch(`/api/files/${id}`, { method: 'DELETE' })
+  fetchFiles()
+}
 
 // Операции
 const fetchOperations = async () => {
@@ -156,6 +214,11 @@ const createOperation = async () => {
   })
   opEmployeeId.value = ''
   opSalary.value = ''
+  fetchOperations()
+}
+const deleteOperation = async (id) => {
+  if (!confirm('Удалить операцию?')) return
+  await fetch(`/api/hr-operations/${id}`, { method: 'DELETE' })
   fetchOperations()
 }
 
@@ -199,8 +262,12 @@ onMounted(() => {
         <button @click="createOrganization" style="padding: 8px 16px; margin-left: 10px; background: #42b883; color: white; border: none; cursor: pointer;">Добавить</button>
       </div>
       <ul>
-        <li v-for="org in organizations" :key="org.id" style="padding: 10px; border-bottom: 1px solid #eee;">
-          <strong>{{ org.name }}</strong> <span style="color: #888; font-size: 0.9em;">({{ org.id }})</span>
+        <li v-for="org in organizations" :key="org.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+          <span><strong>{{ org.name }}</strong></span>
+          <span>
+            <button @click="editOrganization(org)" style="margin-right: 5px; cursor: pointer;">✏️</button>
+            <button @click="deleteOrganization(org.id)" style="color: red; cursor: pointer;">❌</button>
+          </span>
         </li>
       </ul>
     </div>
@@ -219,8 +286,12 @@ onMounted(() => {
         </div>
       </div>
       <ul>
-        <li v-for="dep in departments" :key="dep.id" style="padding: 10px; border-bottom: 1px solid #eee;">
-          <strong>{{ dep.name }}</strong>
+        <li v-for="dep in departments" :key="dep.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+          <span><strong>{{ dep.name }}</strong></span>
+          <span>
+            <button @click="editDepartment(dep)" style="margin-right: 5px; cursor: pointer;">✏️</button>
+            <button @click="deleteDepartment(dep.id)" style="color: red; cursor: pointer;">❌</button>
+          </span>
         </li>
       </ul>
     </div>
@@ -233,8 +304,12 @@ onMounted(() => {
         <button @click="createPosition" style="padding: 8px 16px; margin-left: 10px; background: #42b883; color: white; border: none; cursor: pointer;">Добавить</button>
       </div>
       <ul>
-        <li v-for="pos in positions" :key="pos.id" style="padding: 10px; border-bottom: 1px solid #eee;">
-          <strong>{{ pos.name }}</strong>
+        <li v-for="pos in positions" :key="pos.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+          <span><strong>{{ pos.name }}</strong></span>
+          <span>
+            <button @click="editPosition(pos)" style="margin-right: 5px; cursor: pointer;">✏️</button>
+            <button @click="deletePosition(pos.id)" style="color: red; cursor: pointer;">❌</button>
+          </span>
         </li>
       </ul>
     </div>
@@ -249,8 +324,11 @@ onMounted(() => {
         <button @click="createEmployee" style="padding: 8px 16px; background: #42b883; color: white; border: none; cursor: pointer;">Добавить</button>
       </div>
       <ul>
-        <li v-for="emp in employees" :key="emp.id" style="padding: 10px; border-bottom: 1px solid #eee;">
-          <strong>{{ emp.last_name }} {{ emp.first_name }}</strong> <span style="color: #888;">({{ emp.birth_date.split('T')[0] }})</span>
+        <li v-for="emp in employees" :key="emp.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+          <span><strong>{{ emp.last_name }} {{ emp.first_name }}</strong> ({{ emp.birth_date.split('T')[0] }})</span>
+          <span>
+            <button @click="deleteEmployee(emp.id)" style="color: red; cursor: pointer;">❌</button>
+          </span>
         </li>
       </ul>
     </div>
@@ -270,8 +348,11 @@ onMounted(() => {
         </div>
       </div>
       <ul>
-        <li v-for="file in files" :key="file.id" style="padding: 10px; border-bottom: 1px solid #eee;">
-          <strong>{{ file.name }}</strong> <a :href="file.file_path" target="_blank">(Открыть)</a>
+        <li v-for="file in files" :key="file.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+          <span><strong>{{ file.name }}</strong> <a :href="file.file_path" target="_blank">(Открыть)</a></span>
+          <span>
+            <button @click="deleteFile(file.id)" style="color: red; cursor: pointer;">❌</button>
+          </span>
         </li>
       </ul>
     </div>
@@ -295,9 +376,11 @@ onMounted(() => {
         <button @click="createOperation" style="padding: 8px 16px; background: #42b883; color: white; border: none; cursor: pointer;">Добавить</button>
       </div>
       <ul>
-        <li v-for="op in operations" :key="op.id" style="padding: 10px; border-bottom: 1px solid #eee;">
-          <strong>{{ op.operation_type }}</strong> 
-          <span v-if="op.salary">(Зарплата: {{ op.salary }})</span>
+        <li v-for="op in operations" :key="op.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+          <span><strong>{{ op.operation_type }}</strong> <span v-if="op.salary">(Зарплата: {{ op.salary }})</span></span>
+          <span>
+            <button @click="deleteOperation(op.id)" style="color: red; cursor: pointer;">❌</button>
+          </span>
         </li>
       </ul>
     </div>

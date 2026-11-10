@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, ParseUUIDPipe, BadRequestException } from '@nestjs/common';
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Body, 
+  Patch, 
+  Param, 
+  Delete, 
+  UseInterceptors, 
+  UploadedFile, 
+  ParseUUIDPipe, 
+  BadRequestException 
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service.js';
 import { diskStorage } from 'multer';
@@ -21,17 +33,18 @@ export class FilesController {
   @Post()
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: './uploads', // Папка для файлов (создадим ее)
+      destination: './uploads',
       filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
       }
     }),
     limits: {
-      fileSize: 5 * 1024 * 1024, // Ограничение 5 МБ
+      fileSize: 5 * 1024 * 1024, // 5 МБ
     },
     fileFilter: (req, file, cb) => {
-      if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/)) {
+      // Добавили флаг 'i', чтобы принимались .JPG, .Png и т.д.
+      if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/i)) {
         return cb(new BadRequestException('Only image and PDF files are allowed'), false);
       }
       cb(null, true);
@@ -42,11 +55,10 @@ export class FilesController {
       throw new BadRequestException('File is required');
     }
     
-    // Сохраняем в базу путь к файлу и данные
     return this.filesService.create({
       employee_id: body.employee_id,
       name: body.name || file.originalname,
-      file_path: file.path, // Путь, куда multer сохранил файл
+      file_path: file.path,
       mime_type: file.mimetype,
     });
   }

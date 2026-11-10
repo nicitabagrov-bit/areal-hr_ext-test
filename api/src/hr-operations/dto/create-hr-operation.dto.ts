@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsIn, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsUUID, IsIn, IsNumber, Min } from 'class-validator';
 
 export class CreateHrOperationDto {
   @IsUUID()
@@ -18,6 +18,7 @@ export class CreateHrOperationDto {
   operation_type: string;
 
   @IsNumber()
+  @Min(0, { message: 'Salary cannot be negative' })
   @IsOptional()
   salary?: number;
 }
