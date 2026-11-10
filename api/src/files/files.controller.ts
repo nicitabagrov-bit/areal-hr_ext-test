@@ -15,6 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service.js';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import * as fs from 'fs'; // <-- Для удаления файла
 
 @Controller('files')
 export class FilesController {
@@ -39,12 +40,9 @@ export class FilesController {
         cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
       }
     }),
-    limits: {
-      fileSize: 5 * 1024 * 1024, // 5 МБ
-    },
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 МБ
     fileFilter: (req, file, cb) => {
-      // Добавили флаг 'i', чтобы принимались .JPG, .Png и т.д.
-      if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/i)) {
+      if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/i)) { // <-- флаг i (регистр)
         return cb(new BadRequestException('Only image and PDF files are allowed'), false);
       }
       cb(null, true);
@@ -55,12 +53,20 @@ export class FilesController {
       throw new BadRequestException('File is required');
     }
     
-    return this.filesService.create({
-      employee_id: body.employee_id,
-      name: body.name || file.originalname,
-      file_path: file.path,
-      mime_type: file.mimetype,
-    });
+    try {
+      return await this.filesService.create({
+        employee_id: body.employee_id,
+        name: body.name || file.originalname,
+        file_path: file.path,
+        mime_type: file.mimetype,
+      });
+    } catch (error) {
+      // Если сервис выдал ошибку (сотрудник не найден или база упала), удаляем файл
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      throw error;
+    }
   }
 
   @Patch(':id')

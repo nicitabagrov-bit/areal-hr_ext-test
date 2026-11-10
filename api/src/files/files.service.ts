@@ -1,6 +1,5 @@
 import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Pool } from 'pg';
-import * as fs from 'fs';
 
 @Injectable()
 export class FilesService {
@@ -22,11 +21,7 @@ export class FilesService {
     const empCheck = await this.pool.query('SELECT id FROM employees WHERE id = $1 AND deleted_at IS NULL', [data.employee_id]);
     
     if (empCheck.rowCount === 0) {
-      // Если сотрудник не найден, удаляем файл с диска и возвращаем 400
-      if (fs.existsSync(data.file_path)) {
-        fs.unlinkSync(data.file_path);
-      }
-      throw new BadRequestException('Employee not found');
+      throw new BadRequestException('Employee not found'); // Контроллер поймает это и удалит файл
     }
 
     const res = await this.pool.query(
