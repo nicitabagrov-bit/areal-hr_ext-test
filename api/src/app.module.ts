@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config'; // <-- ДОБАВИТЬ
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
-import { DatabaseModule } from './database.module.js';
+import { DatabaseModule } from './database.module.js'; // <-- ДОЛЖЕН БЫТЬ ПЕРВЫМ
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { DepartmentsModule } from './departments/departments.module.js';
 import { PositionsModule } from './positions/positions.module.js';
@@ -13,8 +13,8 @@ import { ChangeHistoryModule } from './change-history/change-history.module.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }), // <-- ДОБАВИТЬ
-    DatabaseModule,
+    ConfigModule.forRoot({ isGlobal: true }),
+    DatabaseModule, // <-- ПЕРВЫМ ДЕЛОМ
     OrganizationsModule,
     DepartmentsModule,
     PositionsModule,

@@ -1,9 +1,13 @@
 import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Pool } from 'pg';
+import { HistoryLogger } from '../change-history/history-logger.service.js'; // <-- ДОБАВИТЬ
 
 @Injectable()
 export class HrOperationsService {
-  constructor(@Inject('PG_POOL') private pool: Pool) {}
+  constructor(
+    @Inject('PG_POOL') private pool: Pool,
+    private historyLogger: HistoryLogger, // <-- ДОБАВИТЬ
+  ) {}
 
   async findAll() {
     const res = await this.pool.query('SELECT * FROM hr_operations WHERE deleted_at IS NULL');
@@ -33,7 +37,7 @@ export class HrOperationsService {
       if (posCheck.rowCount === 0) throw new BadRequestException('Position not found');
     }
 
-    // 4. Исправляем salary || null (0 сохраняется как 0)
+    // 4. Исправляем salary || null (0 сохраняется)
     const salary = data.salary !== undefined ? data.salary : null;
 
     const res = await this.pool.query(
@@ -41,12 +45,30 @@ export class HrOperationsService {
       [data.employee_id, data.department_id || null, data.position_id || null, data.operation_type, salary],
     );
 
-    // 5. Если это увольнение, помечаем сотрудника удаленным (мягкое удаление)
+    const created = res.rows[0];
+
+    // 5. Запись в историю
+    await this.historyLogger.log({
+      entity_type: 'hr_operation',
+      entity_id: created.id,
+      field_name: 'create',
+      new_value: `Создана операция: ${created.operation_type}`,
+    });
+
+    // 6. Если это увольнение, помечаем сотрудника удаленным
     if (data.operation_type === 'dismissal') {
       await this.pool.query('UPDATE employees SET deleted_at = now() WHERE id = $1', [data.employee_id]);
+      
+      // (Опционально) Запись в историю об увольнении сотрудника
+      await this.historyLogger.log({
+        entity_type: 'employee',
+        entity_id: data.employee_id,
+        field_name: 'dismissal',
+        new_value: 'Уволен',
+      });
     }
 
-    return res.rows[0];
+    return created;
   }
 
   async update(id: string, data: any) {

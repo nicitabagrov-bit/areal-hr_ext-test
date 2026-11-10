@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Pool } from 'pg';
 import { HistoryLogger } from '../change-history/history-logger.service.js';
 
@@ -21,6 +21,11 @@ export class EmployeesService {
   }
 
   async create(data: any) {
+    // Проверка на будущую дату рождения
+    if (new Date(data.birth_date) > new Date()) {
+      throw new BadRequestException('Дата рождения не может быть в будущем');
+    }
+
     const res = await this.pool.query(
       `INSERT INTO employees (
         last_name, first_name, middle_name, birth_date, phone, email,
@@ -48,6 +53,11 @@ export class EmployeesService {
   }
 
   async update(id: string, data: any) {
+    // Проверка на будущую дату рождения (если она меняется)
+    if (data.birth_date !== undefined && new Date(data.birth_date) > new Date()) {
+      throw new BadRequestException('Дата рождения не может быть в будущем');
+    }
+
     // Сначала получаем старые данные для истории
     const oldRes = await this.pool.query('SELECT * FROM employees WHERE id = $1 AND deleted_at IS NULL', [id]);
     if (oldRes.rowCount === 0) throw new NotFoundException('Employee not found');

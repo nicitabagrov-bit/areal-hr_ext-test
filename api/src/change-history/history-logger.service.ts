@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 
 @Injectable()
 export class HistoryLogger {
-  constructor(private pool: Pool) {}
+  constructor(@Inject('PG_POOL') private pool: Pool) {}
 
   async log(data: {
     user_id?: string;

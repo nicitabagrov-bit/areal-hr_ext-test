@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Pool } from 'pg';
+import * as fs from 'fs';
 
 @Injectable()
 export class FilesService {
@@ -17,6 +18,17 @@ export class FilesService {
   }
 
   async create(data: any) {
+    // Проверка существования сотрудника
+    const empCheck = await this.pool.query('SELECT id FROM employees WHERE id = $1 AND deleted_at IS NULL', [data.employee_id]);
+    
+    if (empCheck.rowCount === 0) {
+      // Если сотрудник не найден, удаляем файл с диска и возвращаем 400
+      if (fs.existsSync(data.file_path)) {
+        fs.unlinkSync(data.file_path);
+      }
+      throw new BadRequestException('Employee not found');
+    }
+
     const res = await this.pool.query(
       'INSERT INTO files (employee_id, name, file_path, mime_type) VALUES ($1, $2, $3, $4) RETURNING *',
       [data.employee_id, data.name, data.file_path, data.mime_type || null],
@@ -29,8 +41,8 @@ export class FilesService {
     const values = [];
     let idx = 1;
 
-    // Убрали category_id, так как этой колонки нет в базе
-    const allowedFields = ['name', 'file_path', 'mime_type'];
+    // Убрали file_path из разрешенных полей
+    const allowedFields = ['name', 'mime_type'];
 
     for (const field of allowedFields) {
       if (data[field] !== undefined) {
