@@ -1,9 +1,13 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Pool } from 'pg';
+import { HistoryLogger } from '../change-history/history-logger.service.js';
 
 @Injectable()
 export class EmployeesService {
-  constructor(@Inject('PG_POOL') private pool: Pool) {}
+  constructor(
+    @Inject('PG_POOL') private pool: Pool,
+    private historyLogger: HistoryLogger,
+  ) {}
 
   async findAll() {
     const res = await this.pool.query('SELECT * FROM employees WHERE deleted_at IS NULL');
@@ -29,10 +33,26 @@ export class EmployeesService {
         data.reg_region, data.reg_locality, data.reg_street, data.reg_house, data.reg_building, data.reg_apartment
       ],
     );
-    return res.rows[0];
+    
+    const created = res.rows[0];
+
+    // Запись в историю
+    await this.historyLogger.log({
+      entity_type: 'employee',
+      entity_id: created.id,
+      field_name: 'create',
+      new_value: `Создан сотрудник: ${created.last_name} ${created.first_name}`,
+    });
+
+    return created;
   }
 
   async update(id: string, data: any) {
+    // Сначала получаем старые данные для истории
+    const oldRes = await this.pool.query('SELECT * FROM employees WHERE id = $1 AND deleted_at IS NULL', [id]);
+    if (oldRes.rowCount === 0) throw new NotFoundException('Employee not found');
+    const oldData = oldRes.rows[0];
+
     const fields = [];
     const values = [];
     let idx = 1;
@@ -56,8 +76,22 @@ export class EmployeesService {
     const query = `UPDATE employees SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx} AND deleted_at IS NULL RETURNING *`;
     
     const res = await this.pool.query(query, values);
-    if (res.rowCount === 0) throw new NotFoundException('Employee not found');
-    return res.rows[0];
+    const updated = res.rows[0];
+
+    // Запись в историю для каждого измененного поля
+    for (const field of allowedFields) {
+      if (data[field] !== undefined && data[field] !== oldData[field]) {
+        await this.historyLogger.log({
+          entity_type: 'employee',
+          entity_id: id,
+          field_name: field,
+          old_value: String(oldData[field] || ''),
+          new_value: String(data[field] || ''),
+        });
+      }
+    }
+
+    return updated;
   }
 
   async softDelete(id: string) {
@@ -66,6 +100,18 @@ export class EmployeesService {
       [id],
     );
     if (res.rowCount === 0) throw new NotFoundException('Employee not found');
+    
+    const deleted = res.rows[0];
+
+    // Запись в историю
+    await this.historyLogger.log({
+      entity_type: 'employee',
+      entity_id: id,
+      field_name: 'delete',
+      old_value: `Сотрудник: ${deleted.last_name} ${deleted.first_name}`,
+      new_value: 'Удален',
+    });
+
     return { message: 'Employee soft deleted' };
   }
 }
