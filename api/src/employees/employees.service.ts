@@ -106,15 +106,28 @@ export class EmployeesService {
     const res = await this.pool.query(query, values);
     const updated = res.rows[0];
 
+    // Запись в историю для каждого измененного поля (с корректным сравнением дат)
     for (const field of allowedFields) {
-      if (data[field] !== undefined && data[field] !== oldData[field]) {
-        await this.historyLogger.log({
-          entity_type: 'employee',
-          entity_id: id,
-          field_name: field,
-          old_value: String(oldData[field] || ''),
-          new_value: String(data[field] || ''),
-        });
+      if (data[field] !== undefined) {
+        // Приводим оба значения к строке, чтобы корректно сравнивать Date и string
+        const oldVal = oldData[field] ? String(oldData[field]) : '';
+        const newVal = data[field] ? String(data[field]) : '';
+        
+        // Для дат сравниваем только часть YYYY-MM-DD, чтобы не ловить разницу в часовых поясах
+        let isChanged = oldVal !== newVal;
+        if (field === 'birth_date' || field === 'passport_issue_date') {
+          isChanged = oldVal.split('T')[0] !== newVal.split('T')[0];
+        }
+
+        if (isChanged) {
+          await this.historyLogger.log({
+            entity_type: 'employee',
+            entity_id: id,
+            field_name: field,
+            old_value: oldVal,
+            new_value: newVal,
+          });
+        }
       }
     }
 
@@ -140,4 +153,4 @@ export class EmployeesService {
 
     return { message: 'Employee soft deleted' };
   }
-}
+}c
