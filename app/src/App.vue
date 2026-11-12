@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 
 // --- Функция для вывода ошибок ---
 const showError = (error) => {
@@ -32,6 +32,8 @@ const employees = ref([])
 const newEmpLastName = ref('')
 const newEmpFirstName = ref('')
 const newEmpBirthDate = ref('')
+const searchQuery = ref('')
+const filterDepartmentId = ref('')
 
 // Файлы
 const files = ref([])
@@ -220,6 +222,24 @@ const editEmployee = async (emp) => {
   }
 }
 
+// Фильтрация сотрудников
+const filteredEmployees = computed(() => {
+  let result = employees.value;
+  
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase();
+    result = result.filter(e => 
+      `${e.last_name} ${e.first_name} ${e.middle_name || ''}`.toLowerCase().includes(q)
+    );
+  }
+  
+  if (filterDepartmentId.value) {
+    result = result.filter(e => e.department_id === filterDepartmentId.value);
+  }
+  
+  return result;
+});
+
 // Файлы
 const fetchFiles = async () => {
   try {
@@ -277,6 +297,7 @@ const createOperation = async () => {
     opEmployeeId.value = ''
     opSalary.value = ''
     fetchOperations()
+    fetchEmployees() // <-- Обновляем таблицу сотрудников, чтобы статус "Уволен" появился сразу
   } catch (error) { showError(error) }
 }
 const deleteOperation = async (id) => {
@@ -385,12 +406,25 @@ onMounted(() => {
     <!-- Сотрудники -->
     <div v-if="activeTab === 'emp'">
       <h2>Сотрудники</h2>
+      
+      <!-- Поиск и фильтр -->
+      <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+        <input v-model="searchQuery" placeholder="Поиск по ФИО..." style="padding: 8px; width: 30%;" />
+        <select v-model="filterDepartmentId" style="padding: 8px; width: 30%;">
+          <option value="">Все отделы</option>
+          <option v-for="dep in departments" :key="dep.id" :value="dep.id">{{ dep.name }}</option>
+        </select>
+      </div>
+
+      <!-- Форма добавления -->
       <div style="margin-bottom: 20px; display: flex; gap: 10px;">
         <input v-model="newEmpLastName" placeholder="Фамилия" style="padding: 8px; width: 30%;" />
         <input v-model="newEmpFirstName" placeholder="Имя" style="padding: 8px; width: 30%;" />
         <input v-model="newEmpBirthDate" type="date" style="padding: 8px; width: 30%;" />
         <button @click="createEmployee" style="padding: 8px 16px; background: #42b883; color: white; border: none; cursor: pointer;">Добавить</button>
       </div>
+
+      <!-- Таблица -->
       <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="background: #f0f0f0;">
@@ -403,7 +437,7 @@ onMounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="emp in employees" :key="emp.id" style="border-bottom: 1px solid #eee;">
+          <tr v-for="emp in filteredEmployees" :key="emp.id" style="border-bottom: 1px solid #eee;">
             <td>{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</td>
             <td>{{ emp.phone || '-' }}</td>
             <td>{{ emp.department_id || '-' }}</td>
