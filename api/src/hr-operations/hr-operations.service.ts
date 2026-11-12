@@ -1,12 +1,12 @@
 import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Pool } from 'pg';
-import { HistoryLogger } from '../change-history/history-logger.service.js'; // <-- ДОБАВИТЬ
+import { HistoryLogger } from '../change-history/history-logger.service.js';
 
 @Injectable()
 export class HrOperationsService {
   constructor(
     @Inject('PG_POOL') private pool: Pool,
-    private historyLogger: HistoryLogger, // <-- ДОБАВИТЬ
+    private historyLogger: HistoryLogger,
   ) {}
 
   async findAll() {
@@ -21,9 +21,13 @@ export class HrOperationsService {
   }
 
   async create(data: any) {
-    // 1. Проверка сотрудника
-    const empCheck = await this.pool.query('SELECT id FROM employees WHERE id = $1 AND deleted_at IS NULL', [data.employee_id]);
+    // 1. Проверка сотрудника (он должен существовать и быть не уволенным)
+    const empCheck = await this.pool.query('SELECT id, dismissed_at FROM employees WHERE id = $1 AND deleted_at IS NULL', [data.employee_id]);
     if (empCheck.rowCount === 0) throw new BadRequestException('Employee not found');
+    
+    if (empCheck.rows[0].dismissed_at) {
+      throw new BadRequestException('Employee is already dismissed');
+    }
 
     // 2. Проверка отдела (если передан)
     if (data.department_id) {
@@ -55,11 +59,10 @@ export class HrOperationsService {
       new_value: `Создана операция: ${created.operation_type}`,
     });
 
-    // 6. Если это увольнение, помечаем сотрудника удаленным
+    // 6. Если это увольнение, ставим метку dismissed_at (не удаляем!)
     if (data.operation_type === 'dismissal') {
-      await this.pool.query('UPDATE employees SET deleted_at = now() WHERE id = $1', [data.employee_id]);
+      await this.pool.query('UPDATE employees SET dismissed_at = now() WHERE id = $1', [data.employee_id]);
       
-      // (Опционально) Запись в историю об увольнении сотрудника
       await this.historyLogger.log({
         entity_type: 'employee',
         entity_id: data.employee_id,

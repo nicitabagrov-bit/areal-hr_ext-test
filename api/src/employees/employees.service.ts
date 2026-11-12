@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Pool } from 'pg';
 import { HistoryLogger } from '../change-history/history-logger.service.js';
 
@@ -21,44 +21,62 @@ export class EmployeesService {
   }
 
   async create(data: any) {
-    // Проверка на будущую дату рождения
     if (new Date(data.birth_date) > new Date()) {
       throw new BadRequestException('Дата рождения не может быть в будущем');
     }
 
-    const res = await this.pool.query(
-      `INSERT INTO employees (
-        last_name, first_name, middle_name, birth_date, phone, email,
-        passport_series, passport_number, passport_issue_date, passport_department_code, passport_issued_by,
-        reg_region, reg_locality, reg_street, reg_house, reg_building, reg_apartment
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
-      [
-        data.last_name, data.first_name, data.middle_name, data.birth_date, data.phone, data.email,
-        data.passport_series, data.passport_number, data.passport_issue_date, data.passport_department_code, data.passport_issued_by,
-        data.reg_region, data.reg_locality, data.reg_street, data.reg_house, data.reg_building, data.reg_apartment
-      ],
-    );
-    
-    const created = res.rows[0];
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    // Запись в историю
-    await this.historyLogger.log({
-      entity_type: 'employee',
-      entity_id: created.id,
-      field_name: 'create',
-      new_value: `Создан сотрудник: ${created.last_name} ${created.first_name}`,
-    });
+      const res = await client.query(
+        `INSERT INTO employees (
+          last_name, first_name, middle_name, birth_date, phone, email,
+          passport_series, passport_number, passport_issue_date, passport_department_code, passport_issued_by,
+          reg_region, reg_locality, reg_street, reg_house, reg_building, reg_apartment
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
+        [
+          data.last_name, data.first_name, data.middle_name, data.birth_date, data.phone, data.email,
+          data.passport_series, data.passport_number, data.passport_issue_date, data.passport_department_code, data.passport_issued_by,
+          data.reg_region, data.reg_locality, data.reg_street, data.reg_house, data.reg_building, data.reg_apartment
+        ],
+      );
+      
+      const created = res.rows[0];
 
-    return created;
+      await this.historyLogger.log({
+        entity_type: 'employee',
+        entity_id: created.id,
+        field_name: 'create',
+        new_value: `Создан сотрудник: ${created.last_name} ${created.first_name}`,
+      });
+
+      await client.query('COMMIT');
+      return created;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async update(id: string, data: any) {
-    // Проверка на будущую дату рождения (если она меняется)
+    // Запрет на обнуление обязательных полей
+    if (data.last_name === null) throw new BadRequestException('Фамилия не может быть пустой');
+    if (data.first_name === null) throw new BadRequestException('Имя не может быть пустым');
+    if (data.birth_date === null) throw new BadRequestException('Дата рождения не может быть пустой');
+
+    // Проверка: если сотрудник уволен, редактировать нельзя
+    const check = await this.pool.query('SELECT dismissed_at FROM employees WHERE id = $1', [id]);
+    if (check.rows[0]?.dismissed_at) {
+      throw new ForbiddenException('Нельзя редактировать уволенного сотрудника');
+    }
+
     if (data.birth_date !== undefined && new Date(data.birth_date) > new Date()) {
       throw new BadRequestException('Дата рождения не может быть в будущем');
     }
 
-    // Сначала получаем старые данные для истории
     const oldRes = await this.pool.query('SELECT * FROM employees WHERE id = $1 AND deleted_at IS NULL', [id]);
     if (oldRes.rowCount === 0) throw new NotFoundException('Employee not found');
     const oldData = oldRes.rows[0];
@@ -88,7 +106,6 @@ export class EmployeesService {
     const res = await this.pool.query(query, values);
     const updated = res.rows[0];
 
-    // Запись в историю для каждого измененного поля
     for (const field of allowedFields) {
       if (data[field] !== undefined && data[field] !== oldData[field]) {
         await this.historyLogger.log({
@@ -113,7 +130,6 @@ export class EmployeesService {
     
     const deleted = res.rows[0];
 
-    // Запись в историю
     await this.historyLogger.log({
       entity_type: 'employee',
       entity_id: id,

@@ -30,7 +30,7 @@ export class CreateEmployeeDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^\+?\d{10,15}$/, { message: 'Неверный формат телефона' })
+  @Matches(/^\+7\d{10}$/, { message: 'Телефон должен быть в формате +7XXXXXXXXXX' })
   phone?: string;
 
   @IsEmail({}, { message: 'Неверный формат email' })
@@ -76,13 +76,16 @@ export class CreateEmployeeDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(20)
   reg_house?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(20)
   reg_building?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(20)
   reg_apartment?: string;
 }

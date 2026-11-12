@@ -3,7 +3,12 @@ import { ref, onMounted } from 'vue'
 
 // --- Функция для вывода ошибок ---
 const showError = (error) => {
-  alert('Ошибка: ' + (error.message || 'Что-то пошло не так'));
+  if (error.response && error.response.data && error.response.data.message) {
+    const msg = error.response.data.message;
+    alert('Ошибка: ' + (Array.isArray(msg) ? msg.join(', ') : msg));
+  } else {
+    alert('Ошибка: ' + (error.message || 'Что-то пошло не так'));
+  }
 }
 
 // --- Состояние ---
@@ -200,13 +205,19 @@ const createEmployee = async () => {
     fetchEmployees()
   } catch (error) { showError(error) }
 }
-const deleteEmployee = async (id) => {
-  if (!confirm('Удалить сотрудника?')) return
-  try {
-    const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('Ошибка удаления')
-    fetchEmployees()
-  } catch (error) { showError(error) }
+const editEmployee = async (emp) => {
+  const newPhone = prompt('Новый телефон (или оставьте пустым):', emp.phone || '')
+  if (newPhone !== null) {
+    try {
+      const res = await fetch(`/api/employees/${emp.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: newPhone })
+      })
+      if (!res.ok) throw new Error('Ошибка обновления сотрудника')
+      fetchEmployees()
+    } catch (error) { showError(error) }
+  }
 }
 
 // Файлы
@@ -380,14 +391,33 @@ onMounted(() => {
         <input v-model="newEmpBirthDate" type="date" style="padding: 8px; width: 30%;" />
         <button @click="createEmployee" style="padding: 8px 16px; background: #42b883; color: white; border: none; cursor: pointer;">Добавить</button>
       </div>
-      <ul>
-        <li v-for="emp in employees" :key="emp.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-          <span><strong>{{ emp.last_name }} {{ emp.first_name }}</strong> ({{ emp.birth_date.split('T')[0] }})</span>
-          <span>
-            <button @click="deleteEmployee(emp.id)" style="color: red; cursor: pointer;">❌</button>
-          </span>
-        </li>
-      </ul>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background: #f0f0f0;">
+            <th>ФИО</th>
+            <th>Телефон</th>
+            <th>Отдел</th>
+            <th>Должность</th>
+            <th>Статус</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="emp in employees" :key="emp.id" style="border-bottom: 1px solid #eee;">
+            <td>{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</td>
+            <td>{{ emp.phone || '-' }}</td>
+            <td>{{ emp.department_id || '-' }}</td>
+            <td>{{ emp.position_id || '-' }}</td>
+            <td>
+              <span v-if="emp.dismissed_at" style="color: red;">Уволен</span>
+              <span v-else style="color: green;">Работает</span>
+            </td>
+            <td>
+              <button v-if="!emp.dismissed_at" @click="editEmployee(emp)" style="cursor: pointer;">✏️</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Файлы -->

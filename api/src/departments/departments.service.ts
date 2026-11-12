@@ -17,13 +17,15 @@ export class DepartmentsService {
   }
 
   async create(data: { name: string; comment?: string; organization_id: string; parent_id?: string }) {
-    const orgCheck = await this.pool.query('SELECT id FROM organizations WHERE id = $1', [data.organization_id]);
+    // 1. Проверяем, существует ли организация (и не удалена)
+    const orgCheck = await this.pool.query('SELECT id FROM organizations WHERE id = $1 AND deleted_at IS NULL', [data.organization_id]);
     if (orgCheck.rowCount === 0) {
       throw new BadRequestException('Organization not found');
     }
 
+    // 2. Проверяем родителя (если передан)
     if (data.parent_id) {
-      const parentCheck = await this.pool.query('SELECT id FROM departments WHERE id = $1', [data.parent_id]);
+      const parentCheck = await this.pool.query('SELECT id FROM departments WHERE id = $1 AND deleted_at IS NULL', [data.parent_id]);
       if (parentCheck.rowCount === 0) {
         throw new BadRequestException('Parent department not found');
       }
@@ -37,7 +39,7 @@ export class DepartmentsService {
   }
 
   async update(id: string, data: any) {
-    // Проверка на цикл
+    // Проверка на цикл (упрощенная)
     if (data.parent_id) {
       if (data.parent_id === id) {
         throw new BadRequestException('Department cannot be its own parent');
