@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
-import { DatabaseModule } from './database.module.js'; // <-- ДОЛЖЕН БЫТЬ ПЕРВЫМ
+import { DatabaseModule } from './database.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { DepartmentsModule } from './departments/departments.module.js';
 import { PositionsModule } from './positions/positions.module.js';
@@ -10,11 +10,15 @@ import { EmployeesModule } from './employees/employees.module.js';
 import { FilesModule } from './files/files.module.js';
 import { HrOperationsModule } from './hr-operations/hr-operations.module.js';
 import { ChangeHistoryModule } from './change-history/change-history.module.js';
+import { AuthModule } from './auth/auth.module.js'; // <-- ДОБАВИТЬ
+import { AddressesModule } from './addresses/addresses.module.js';
+import { PassportsModule } from './passports/passports.module.js';
+import { FileCategoriesModule } from './file-categories/file-categories.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    DatabaseModule, // <-- ПЕРВЫМ ДЕЛОМ
+    DatabaseModule,
     OrganizationsModule,
     DepartmentsModule,
     PositionsModule,
@@ -22,6 +26,10 @@ import { ChangeHistoryModule } from './change-history/change-history.module.js';
     FilesModule,
     HrOperationsModule,
     ChangeHistoryModule,
+    AuthModule,
+    AddressesModule,
+    PassportsModule,
+    FileCategoriesModule, // <-- ДОБАВИТЬ
   ],
   controllers: [AppController],
   providers: [AppService],

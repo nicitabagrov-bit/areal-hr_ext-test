@@ -38,8 +38,10 @@ const filterDepartmentId = ref('')
 // Файлы
 const files = ref([])
 const fileEmployeeId = ref('')
+const fileCategoryId = ref('')
 const fileInput = ref(null)
 const fileName = ref('')
+const categories = ref([]) // <-- Для категорий файлов
 
 // Операции
 const operations = ref([])
@@ -240,11 +242,17 @@ const filteredEmployees = computed(() => {
   return result;
 });
 
-// Файлы
+// Файлы и Категории
 const fetchFiles = async () => {
   try {
     const res = await fetch('/api/files')
     files.value = await res.json()
+  } catch (error) { showError(error) }
+}
+const fetchCategories = async () => {
+  try {
+    const res = await fetch('/api/file-categories')
+    categories.value = await res.json()
   } catch (error) { showError(error) }
 }
 const uploadFile = async () => {
@@ -253,6 +261,7 @@ const uploadFile = async () => {
     const formData = new FormData()
     formData.append('file', fileInput.value)
     formData.append('employee_id', fileEmployeeId.value)
+    if (fileCategoryId.value) formData.append('category_id', fileCategoryId.value)
     formData.append('name', fileName.value || 'Scan')
 
     const res = await fetch('/api/files', { method: 'POST', body: formData })
@@ -297,7 +306,7 @@ const createOperation = async () => {
     opEmployeeId.value = ''
     opSalary.value = ''
     fetchOperations()
-    fetchEmployees() // <-- Обновляем таблицу сотрудников, чтобы статус "Уволен" появился сразу
+    fetchEmployees() // Обновляем таблицу сотрудников, чтобы статус "Уволен" появился сразу
   } catch (error) { showError(error) }
 }
 const deleteOperation = async (id) => {
@@ -324,6 +333,7 @@ onMounted(() => {
   fetchPositions()
   fetchEmployees()
   fetchFiles()
+  fetchCategories() // <-- Загружаем категории
   fetchOperations()
   fetchHistory()
 })
@@ -462,6 +472,12 @@ onMounted(() => {
           <option value="" disabled>Выберите сотрудника</option>
           <option v-for="emp in employees" :key="emp.id" :value="emp.id">{{ emp.last_name }} {{ emp.first_name }}</option>
         </select>
+        
+        <select v-model="fileCategoryId" style="padding: 8px;">
+          <option value="">Без категории</option>
+          <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+        </select>
+
         <input v-model="fileName" placeholder="Название файла" style="padding: 8px;" />
         <div>
           <input type="file" @change="handleFileChange" style="padding: 8px;" />

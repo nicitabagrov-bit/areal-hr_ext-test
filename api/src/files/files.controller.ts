@@ -15,7 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service.js';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import * as fs from 'fs'; // <-- Для удаления файла
+import * as fs from 'fs';
 
 @Controller('files')
 export class FilesController {
@@ -40,28 +40,39 @@ export class FilesController {
         cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
       }
     }),
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5 МБ
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-      if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/i)) { // <-- флаг i (регистр)
-        return cb(new BadRequestException('Only image and PDF files are allowed'), false);
+      // Разрешаем только картинки и PDF (регистр не важен)
+      if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/i)) {
+        return cb(new BadRequestException('Разрешены только файлы JPG, PNG или PDF'), false);
       }
       cb(null, true);
     }
   }))
   async create(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
+    // 1. Проверка наличия файла
     if (!file) {
-      throw new BadRequestException('File is required');
+      throw new BadRequestException('Файл обязателен');
+    }
+
+    // 2. Проверка employee_id (без isUUID, чтобы не было ложных срабатываний)
+    // Сервис сам проверит, есть ли такой сотрудник в базе
+    if (!body.employee_id) {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      throw new BadRequestException('employee_id обязателен');
     }
     
+    // 3. Передача в сервис
     try {
       return await this.filesService.create({
         employee_id: body.employee_id,
+        category_id: body.category_id || null,
         name: body.name || file.originalname,
         file_path: file.path,
         mime_type: file.mimetype,
       });
     } catch (error) {
-      // Если сервис выдал ошибку (сотрудник не найден или база упала), удаляем файл
+      // Если сервис выдал ошибку (например, сотрудник или категория не найдены) — УДАЛЯЕМ ФАЙЛ
       if (fs.existsSync(file.path)) {
         fs.unlinkSync(file.path);
       }
