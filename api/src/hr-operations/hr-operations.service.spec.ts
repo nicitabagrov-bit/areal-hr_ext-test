@@ -1,24 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { HrOperationsService } from './hr-operations.service.js';
 import { HistoryLogger } from '../change-history/history-logger.service.js';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 describe('HrOperationsService', () => {
   let service: HrOperationsService;
-
-  const mockPool = {
-    query: vi.fn(),
-    connect: vi.fn().mockReturnValue({
-      query: vi.fn(),
-      release: vi.fn(),
-    }),
-  };
-
-  const mockHistoryLogger = {
-    log: vi.fn().mockResolvedValue(null),
-  };
+  let mockPool: any;
+  let mockHistoryLogger: any;
 
   beforeEach(async () => {
+    mockPool = {
+      query: vi.fn(),
+    };
+    mockHistoryLogger = {
+      log: vi.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         HrOperationsService,
@@ -30,19 +27,25 @@ describe('HrOperationsService', () => {
     service = module.get<HrOperationsService>(HrOperationsService);
   });
 
-  it('должен быть определен', () => {
+  it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
   it('должен вызывать UPDATE для employees при увольнении', async () => {
-    mockPool.query.mockResolvedValueOnce({ rows: [{ id: '123', dismissed_at: null }], rowCount: 1 });
-    mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'op1', operation_type: 'dismissal' }], rowCount: 1 });
+    // Мокаем проверку сотрудника (он существует, не уволен, у него есть отдел)
+    mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'emp1', dismissed_at: null, department_id: 'dep1' }], rowCount: 1 });
+    // Мокаем UPDATE employees
+    mockPool.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+    // Мокаем INSERT в hr_operations
+    mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'op1', operation_type: 'dismissal' }] });
 
-    await service.create({ employee_id: '123', operation_type: 'dismissal' });
+    await service.create({ employee_id: 'emp1', operation_type: 'dismissal' });
 
-    expect(mockPool.query).toHaveBeenCalledWith(
+    // Проверяем, что второй запрос был именно UPDATE employees SET dismissed_at
+    expect(mockPool.query).toHaveBeenNthCalledWith(
+      2,
       'UPDATE employees SET dismissed_at = now() WHERE id = $1',
-      ['123'],
+      ['emp1']
     );
   });
 });
