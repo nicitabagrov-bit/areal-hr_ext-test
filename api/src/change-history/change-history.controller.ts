@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ChangeHistoryService } from './change-history.service.js';
 
 @Controller('change-history')
@@ -11,17 +11,9 @@ export class ChangeHistoryController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.changeHistoryService.findOne(id);
   }
 
-  @Post()
-  create(@Body() createDto: any) {
-    return this.changeHistoryService.create(createDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.changeHistoryService.softDelete(id);
-  }
+  // МЕТОДЫ @Post() И @Delete() УДАЛЕНЫ!
 }

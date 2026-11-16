@@ -9,13 +9,16 @@ import {
   UseInterceptors, 
   UploadedFile, 
   ParseUUIDPipe, 
-  BadRequestException 
+  BadRequestException,
+  Res,
+  NotFoundException
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service.js';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
 import * as fs from 'fs';
+import type { Response } from 'express';
 
 @Controller('files')
 export class FilesController {
@@ -31,6 +34,20 @@ export class FilesController {
     return this.filesService.findOne(id);
   }
 
+  // НОВЫЙ МЕТОД ДЛЯ СКАЧИВАНИЯ (без Guard'а)
+  @Get(':id/download')
+  async downloadFile(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
+    const file = await this.filesService.findOne(id);
+    if (!file) throw new NotFoundException('Файл не найден');
+    
+    const filePath = join(process.cwd(), file.file_path);
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException('Файл отсутствует на диске');
+    }
+    
+    res.download(filePath);
+  }
+
   @Post()
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
@@ -42,27 +59,17 @@ export class FilesController {
     }),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-      // Разрешаем только картинки и PDF (регистр не важен)
       if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/i)) {
-        return cb(new BadRequestException('Разрешены только файлы JPG, PNG или PDF'), false);
+        return cb(new BadRequestException('Only image and PDF files are allowed'), false);
       }
       cb(null, true);
     }
   }))
   async create(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
-    // 1. Проверка наличия файла
     if (!file) {
-      throw new BadRequestException('Файл обязателен');
-    }
-
-    // 2. Проверка employee_id (без isUUID, чтобы не было ложных срабатываний)
-    // Сервис сам проверит, есть ли такой сотрудник в базе
-    if (!body.employee_id) {
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      throw new BadRequestException('employee_id обязателен');
+      throw new BadRequestException('File is required');
     }
     
-    // 3. Передача в сервис
     try {
       return await this.filesService.create({
         employee_id: body.employee_id,
@@ -72,7 +79,6 @@ export class FilesController {
         mime_type: file.mimetype,
       });
     } catch (error) {
-      // Если сервис выдал ошибку (например, сотрудник или категория не найдены) — УДАЛЯЕМ ФАЙЛ
       if (fs.existsSync(file.path)) {
         fs.unlinkSync(file.path);
       }

@@ -52,8 +52,8 @@ const operations = ref([])
 const opEmployeeId = ref('')
 const opType = ref('hire')
 const opSalary = ref('')
-const opDepartmentId = ref('') // Для выбора отдела в операции
-const opPositionId = ref('')   // Для выбора должности в операции
+const opDepartmentId = ref('')
+const opPositionId = ref('')
 
 // История
 const history = ref([])
@@ -218,7 +218,7 @@ const createEmployee = async () => {
 
 // Открытие модалки редактирования
 const openEditModal = (emp) => {
-  editingEmployee.value = { ...emp } // копируем данные сотрудника
+  editingEmployee.value = { ...emp }
   isEditModalOpen.value = true
 }
 
@@ -226,14 +226,12 @@ const openEditModal = (emp) => {
 const saveEmployeeChanges = async () => {
   const emp = editingEmployee.value;
   try {
-    // 1. Обновляем телефон в employees
     await fetch(`/api/employees/${emp.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: emp.phone })
     });
 
-    // 2. Если ввели паспорт - сохраняем
     if (emp.passport_series) {
       await fetch('/api/passports', {
         method: 'POST',
@@ -249,7 +247,6 @@ const saveEmployeeChanges = async () => {
       });
     }
 
-    // 3. Если ввели адрес - сохраняем
     if (emp.address_city) {
       await fetch('/api/addresses', {
         method: 'POST',
@@ -274,7 +271,7 @@ const saveEmployeeChanges = async () => {
   }
 }
 
-// Вспомогательные функции для отображения названий вместо UUID
+// Вспомогательные функции для отображения названий
 const getDepartmentName = (id) => {
   if (!id) return '-';
   const dep = departments.value.find(d => d.id === id);
@@ -379,7 +376,7 @@ const createOperation = async () => {
     opDepartmentId.value = ''
     opPositionId.value = ''
     fetchOperations()
-    fetchEmployees() // Обновляем статус сотрудника
+    fetchEmployees()
   } catch (error) { showError(error) }
 }
 const deleteOperation = async (id) => {
@@ -388,7 +385,7 @@ const deleteOperation = async (id) => {
     const res = await fetch(`/api/hr-operations/${id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error('Ошибка удаления')
     fetchOperations()
-    fetchEmployees() // Обновляем, чтобы восстановить статус
+    fetchEmployees()
   } catch (error) { showError(error) }
 }
 
@@ -400,7 +397,6 @@ const fetchHistory = async () => {
   } catch (error) { showError(error) }
 }
 
-// --- Загрузка ---
 onMounted(() => {
   fetchOrganizations()
   fetchDepartments()
@@ -557,7 +553,11 @@ onMounted(() => {
       </div>
       <ul>
         <li v-for="file in files" :key="file.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-          <span><strong>{{ file.name }}</strong> <a :href="file.file_path" target="_blank">(Открыть)</a></span>
+          <span>
+            <strong>{{ file.name }}</strong> 
+            <!-- ССЫЛКА НА СКАЧИВАНИЕ ЧЕРЕЗ БЕЗОПАСНЫЙ ЭНДПОИНТ -->
+            <a :href="`http://localhost:3000/files/${file.id}/download`" target="_blank" style="margin-left: 10px; color: blue;">(Скачать)</a>
+          </span>
           <span>
             <button @click="deleteFile(file.id)" style="color: red; cursor: pointer;">❌</button>
           </span>
@@ -581,7 +581,6 @@ onMounted(() => {
           <option value="dismissal">Увольнение</option>
         </select>
 
-        <!-- НОВОЕ: Выбор отдела и должности -->
         <select v-model="opDepartmentId" style="padding: 8px;">
           <option value="">Выберите отдел (если нужно)</option>
           <option v-for="dep in departments" :key="dep.id" :value="dep.id">{{ dep.name }}</option>
@@ -610,7 +609,7 @@ onMounted(() => {
       <ul>
         <li v-for="h in history" :key="h.id" style="padding: 10px; border-bottom: 1px solid #eee;">
           <strong>{{ h.field_name }}</strong>: {{ h.old_value }} → {{ h.new_value }} 
-          <span style="color: #888; font-size: 0.8em;">({{ h.changed_at.split('T')[0] }})</span>
+          <span style="color: #888; font-size: 0.8em;">({{ h.changed_at ? h.changed_at.split('T')[0] : 'Дата неизвестна' }})</span>
         </li>
       </ul>
     </div>
