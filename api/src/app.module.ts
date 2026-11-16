@@ -2,36 +2,46 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
-import { DatabaseModule } from './database.module.js';
+import { DatabaseModule } from './database.module.js'; // <-- Импортируем наш модуль БД
+
+// Твои модули (С .js на конце, как требует твой TypeScript)
+import { AuthModule } from './auth/auth.module.js';
+import { EmployeesModule } from './employees/employees.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { DepartmentsModule } from './departments/departments.module.js';
 import { PositionsModule } from './positions/positions.module.js';
-import { EmployeesModule } from './employees/employees.module.js';
 import { FilesModule } from './files/files.module.js';
+import { FileCategoriesModule } from './file-categories/file-categories.module.js';
 import { HrOperationsModule } from './hr-operations/hr-operations.module.js';
 import { ChangeHistoryModule } from './change-history/change-history.module.js';
-import { AuthModule } from './auth/auth.module.js'; // <-- ДОБАВИТЬ
 import { AddressesModule } from './addresses/addresses.module.js';
 import { PassportsModule } from './passports/passports.module.js';
-import { FileCategoriesModule } from './file-categories/file-categories.module.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // 1. Загружаем .env глобально
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+
+    // 2. Подключаем базу данных
     DatabaseModule,
+
+    // 3. Твои модули
+    AuthModule,
+    EmployeesModule,
     OrganizationsModule,
     DepartmentsModule,
     PositionsModule,
-    EmployeesModule,
     FilesModule,
+    FileCategoriesModule,
     HrOperationsModule,
     ChangeHistoryModule,
-    AuthModule,
     AddressesModule,
     PassportsModule,
-    FileCategoriesModule, // <-- ДОБАВИТЬ
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService], // <-- ТУТ БОЛЬШЕ НЕТ PG_POOL
 })
 export class AppModule {}

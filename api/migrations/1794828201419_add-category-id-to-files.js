@@ -3,11 +3,11 @@ export const up = (pgm) => {
     category_id: {
       type: 'uuid',
       references: 'file_categories',
-      onDelete: 'SET NULL', // Если категорию удалят, у файла станет null
+      onDelete: 'SET NULL',
     },
   });
 };
 
 export const down = (pgm) => {
   pgm.dropColumn('files', 'category_id');
-};cd 
+};
