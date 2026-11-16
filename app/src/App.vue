@@ -35,19 +35,25 @@ const newEmpBirthDate = ref('')
 const searchQuery = ref('')
 const filterDepartmentId = ref('')
 
+// Модальное окно редактирования сотрудника (Паспорт, Адрес)
+const isEditModalOpen = ref(false)
+const editingEmployee = ref({})
+
 // Файлы
 const files = ref([])
 const fileEmployeeId = ref('')
 const fileCategoryId = ref('')
 const fileInput = ref(null)
 const fileName = ref('')
-const categories = ref([]) // <-- Для категорий файлов
+const categories = ref([])
 
 // Операции
 const operations = ref([])
 const opEmployeeId = ref('')
 const opType = ref('hire')
 const opSalary = ref('')
+const opDepartmentId = ref('') // Для выбора отдела в операции
+const opPositionId = ref('')   // Для выбора должности в операции
 
 // История
 const history = ref([])
@@ -209,19 +215,76 @@ const createEmployee = async () => {
     fetchEmployees()
   } catch (error) { showError(error) }
 }
-const editEmployee = async (emp) => {
-  const newPhone = prompt('Новый телефон (или оставьте пустым):', emp.phone || '')
-  if (newPhone !== null) {
-    try {
-      const res = await fetch(`/api/employees/${emp.id}`, {
-        method: 'PATCH',
+
+// Открытие модалки редактирования
+const openEditModal = (emp) => {
+  editingEmployee.value = { ...emp } // копируем данные сотрудника
+  isEditModalOpen.value = true
+}
+
+// Сохранение изменений (Телефон + Паспорт + Адрес)
+const saveEmployeeChanges = async () => {
+  const emp = editingEmployee.value;
+  try {
+    // 1. Обновляем телефон в employees
+    await fetch(`/api/employees/${emp.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: emp.phone })
+    });
+
+    // 2. Если ввели паспорт - сохраняем
+    if (emp.passport_series) {
+      await fetch('/api/passports', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: newPhone })
-      })
-      if (!res.ok) throw new Error('Ошибка обновления сотрудника')
-      fetchEmployees()
-    } catch (error) { showError(error) }
+        body: JSON.stringify({
+          employee_id: emp.id,
+          series: emp.passport_series,
+          number: emp.passport_number,
+          issue_date: emp.passport_issue_date,
+          issued_by: emp.passport_issued_by,
+          department_code: emp.passport_department_code
+        })
+      });
+    }
+
+    // 3. Если ввели адрес - сохраняем
+    if (emp.address_city) {
+      await fetch('/api/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: emp.id,
+          region: emp.address_region,
+          city: emp.address_city,
+          street: emp.address_street,
+          house: emp.address_house,
+          building: emp.address_building,
+          apartment: emp.address_apartment
+        })
+      });
+    }
+
+    isEditModalOpen.value = false;
+    fetchEmployees();
+    alert('Данные сохранены!');
+  } catch (error) {
+    showError(error);
   }
+}
+
+// Вспомогательные функции для отображения названий вместо UUID
+const getDepartmentName = (id) => {
+  if (!id) return '-';
+  const dep = departments.value.find(d => d.id === id);
+  return dep ? dep.name : 'Не найден';
+}
+
+const getPositionName = (id) => {
+  if (!id) return '-';
+  const pos = positions.value.find(p => p.id === id);
+  return pos ? pos.name : 'Не найден';
 }
 
 // Фильтрация сотрудников
@@ -242,7 +305,7 @@ const filteredEmployees = computed(() => {
   return result;
 });
 
-// Файлы и Категории
+// Файлы
 const fetchFiles = async () => {
   try {
     const res = await fetch('/api/files')
@@ -294,7 +357,12 @@ const fetchOperations = async () => {
 const createOperation = async () => {
   if (!opEmployeeId.value || !opType.value) return
   try {
-    const data = { employee_id: opEmployeeId.value, operation_type: opType.value }
+    const data = { 
+      employee_id: opEmployeeId.value, 
+      operation_type: opType.value,
+      department_id: opDepartmentId.value || null,
+      position_id: opPositionId.value || null
+    }
     if (opSalary.value) data.salary = Number(opSalary.value)
 
     const res = await fetch('/api/hr-operations', {
@@ -302,11 +370,16 @@ const createOperation = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
-    if (!res.ok) throw new Error('Ошибка создания операции')
+    if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Ошибка создания операции');
+    }
     opEmployeeId.value = ''
     opSalary.value = ''
+    opDepartmentId.value = ''
+    opPositionId.value = ''
     fetchOperations()
-    fetchEmployees() // Обновляем таблицу сотрудников, чтобы статус "Уволен" появился сразу
+    fetchEmployees() // Обновляем статус сотрудника
   } catch (error) { showError(error) }
 }
 const deleteOperation = async (id) => {
@@ -315,6 +388,7 @@ const deleteOperation = async (id) => {
     const res = await fetch(`/api/hr-operations/${id}`, { method: 'DELETE' })
     if (!res.ok) throw new Error('Ошибка удаления')
     fetchOperations()
+    fetchEmployees() // Обновляем, чтобы восстановить статус
   } catch (error) { showError(error) }
 }
 
@@ -333,7 +407,7 @@ onMounted(() => {
   fetchPositions()
   fetchEmployees()
   fetchFiles()
-  fetchCategories() // <-- Загружаем категории
+  fetchCategories()
   fetchOperations()
   fetchHistory()
 })
@@ -417,7 +491,6 @@ onMounted(() => {
     <div v-if="activeTab === 'emp'">
       <h2>Сотрудники</h2>
       
-      <!-- Поиск и фильтр -->
       <div style="margin-bottom: 20px; display: flex; gap: 10px;">
         <input v-model="searchQuery" placeholder="Поиск по ФИО..." style="padding: 8px; width: 30%;" />
         <select v-model="filterDepartmentId" style="padding: 8px; width: 30%;">
@@ -426,7 +499,6 @@ onMounted(() => {
         </select>
       </div>
 
-      <!-- Форма добавления -->
       <div style="margin-bottom: 20px; display: flex; gap: 10px;">
         <input v-model="newEmpLastName" placeholder="Фамилия" style="padding: 8px; width: 30%;" />
         <input v-model="newEmpFirstName" placeholder="Имя" style="padding: 8px; width: 30%;" />
@@ -434,7 +506,6 @@ onMounted(() => {
         <button @click="createEmployee" style="padding: 8px 16px; background: #42b883; color: white; border: none; cursor: pointer;">Добавить</button>
       </div>
 
-      <!-- Таблица -->
       <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="background: #f0f0f0;">
@@ -450,14 +521,14 @@ onMounted(() => {
           <tr v-for="emp in filteredEmployees" :key="emp.id" style="border-bottom: 1px solid #eee;">
             <td>{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</td>
             <td>{{ emp.phone || '-' }}</td>
-            <td>{{ emp.department_id || '-' }}</td>
-            <td>{{ emp.position_id || '-' }}</td>
+            <td>{{ getDepartmentName(emp.department_id) }}</td>
+            <td>{{ getPositionName(emp.position_id) }}</td>
             <td>
               <span v-if="emp.dismissed_at" style="color: red;">Уволен</span>
               <span v-else style="color: green;">Работает</span>
             </td>
             <td>
-              <button v-if="!emp.dismissed_at" @click="editEmployee(emp)" style="cursor: pointer;">✏️</button>
+              <button v-if="!emp.dismissed_at" @click="openEditModal(emp)" style="cursor: pointer;" title="Редактировать паспорт и адрес">✏️</button>
             </td>
           </tr>
         </tbody>
@@ -509,6 +580,17 @@ onMounted(() => {
           <option value="department_change">Изменение отдела</option>
           <option value="dismissal">Увольнение</option>
         </select>
+
+        <!-- НОВОЕ: Выбор отдела и должности -->
+        <select v-model="opDepartmentId" style="padding: 8px;">
+          <option value="">Выберите отдел (если нужно)</option>
+          <option v-for="dep in departments" :key="dep.id" :value="dep.id">{{ dep.name }}</option>
+        </select>
+        <select v-model="opPositionId" style="padding: 8px;">
+          <option value="">Выберите должность (если нужно)</option>
+          <option v-for="pos in positions" :key="pos.id" :value="pos.id">{{ pos.name }}</option>
+        </select>
+
         <input v-model="opSalary" type="number" placeholder="Зарплата (опционально)" style="padding: 8px;" />
         <button @click="createOperation" style="padding: 8px 16px; background: #42b883; color: white; border: none; cursor: pointer;">Добавить</button>
       </div>
@@ -531,6 +613,36 @@ onMounted(() => {
           <span style="color: #888; font-size: 0.8em;">({{ h.changed_at.split('T')[0] }})</span>
         </li>
       </ul>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ (Паспорт и Адрес) -->
+    <div v-if="isEditModalOpen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+      <div style="background: white; padding: 20px; border-radius: 8px; width: 500px; max-height: 90vh; overflow-y: auto;">
+        <h3>Редактирование: {{ editingEmployee.last_name }} {{ editingEmployee.first_name }}</h3>
+        
+        <h4>Основное</h4>
+        <input v-model="editingEmployee.phone" placeholder="Телефон" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+
+        <h4>Паспорт</h4>
+        <input v-model="editingEmployee.passport_series" placeholder="Серия (4 цифры)" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+        <input v-model="editingEmployee.passport_number" placeholder="Номер (6 цифр)" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+        <input v-model="editingEmployee.passport_issue_date" type="date" placeholder="Дата выдачи" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+        <input v-model="editingEmployee.passport_issued_by" placeholder="Кем выдан" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+        <input v-model="editingEmployee.passport_department_code" placeholder="Код подразделения" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+
+        <h4>Адрес регистрации</h4>
+        <input v-model="editingEmployee.address_region" placeholder="Область" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+        <input v-model="editingEmployee.address_city" placeholder="Город/Населенный пункт" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+        <input v-model="editingEmployee.address_street" placeholder="Улица" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+        <input v-model="editingEmployee.address_house" placeholder="Дом" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+        <input v-model="editingEmployee.address_building" placeholder="Корпус" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+        <input v-model="editingEmployee.address_apartment" placeholder="Квартира" style="width: 100%; padding: 8px; margin-bottom: 10px;" />
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button @click="isEditModalOpen = false" style="padding: 8px 16px; cursor: pointer;">Отмена</button>
+          <button @click="saveEmployeeChanges" style="padding: 8px 16px; background: #42b883; color: white; border: none; cursor: pointer;">Сохранить</button>
+        </div>
+      </div>
     </div>
 
   </div>
