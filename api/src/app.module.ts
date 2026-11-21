@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
-import { DatabaseModule } from './database.module.js'; // <-- Импортируем наш модуль БД
+import { DatabaseModule } from './database.module.js';
 
-// Твои модули (С .js на конце, как требует твой TypeScript)
+// Твои модули
 import { AuthModule } from './auth/auth.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
@@ -17,18 +17,21 @@ import { ChangeHistoryModule } from './change-history/change-history.module.js';
 import { AddressesModule } from './addresses/addresses.module.js';
 import { PassportsModule } from './passports/passports.module.js';
 
+// Модуль пользователей
+import { UsersModule } from './users/users.module.js';
+
+// Модуль ролей
+import { RolesModule } from './roles/roles.module.js';
+
 @Module({
   imports: [
-    // 1. Загружаем .env глобально
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
-
-    // 2. Подключаем базу данных
     DatabaseModule,
 
-    // 3. Твои модули
+    // Твои модули
     AuthModule,
     EmployeesModule,
     OrganizationsModule,
@@ -40,8 +43,14 @@ import { PassportsModule } from './passports/passports.module.js';
     ChangeHistoryModule,
     AddressesModule,
     PassportsModule,
+
+    // Подключаем модуль пользователей
+    UsersModule,
+
+    // Подключаем модуль ролей
+    RolesModule,
   ],
   controllers: [AppController],
-  providers: [AppService], // <-- ТУТ БОЛЬШЕ НЕТ PG_POOL
+  providers: [AppService],
 })
 export class AppModule {}
