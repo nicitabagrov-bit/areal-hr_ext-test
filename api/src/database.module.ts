@@ -1,23 +1,19 @@
 import { Module, Global } from '@nestjs/common';
 import { Pool } from 'pg';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Global()
 @Module({
+  imports: [ConfigModule],
   providers: [
     {
       provide: 'PG_POOL',
-      useFactory: () => {
-        console.log('🔥 DatabaseModule: ЖЕСТКОЕ ПОДКЛЮЧЕНИЕ К БАЗЕ (hr_user)');
-        
-        // Жестко прописываем параметры, игнорируя .env и системные переменные
+      useFactory: (configService: ConfigService) => {
         return new Pool({
-          host: 'localhost',
-          port: 5432,
-          user: 'hr_user',
-          password: 'your_secure_password',
-          database: 'hr_db',
+          connectionString: configService.get<string>('DATABASE_URL'),
         });
       },
+      inject: [ConfigService],
     },
   ],
   exports: ['PG_POOL'],
