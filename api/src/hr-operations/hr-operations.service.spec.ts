@@ -32,7 +32,6 @@ describe('HrOperationsService', () => {
   });
 
   it('должен вызывать UPDATE для employees при увольнении', async () => {
-    // Мокаем проверку сотрудника (он существует, не уволен, у него есть отдел)
     mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'emp1', dismissed_at: null, department_id: 'dep1' }], rowCount: 1 });
     // Мокаем UPDATE employees
     mockPool.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });

@@ -106,14 +106,14 @@ export class EmployeesService {
     const res = await this.pool.query(query, values);
     const updated = res.rows[0];
 
-    // Запись в историю для каждого измененного поля (с корректным сравнением дат)
+
     for (const field of allowedFields) {
       if (data[field] !== undefined) {
         // Приводим оба значения к строке, чтобы корректно сравнивать Date и string
         const oldVal = oldData[field] ? String(oldData[field]) : '';
         const newVal = data[field] ? String(data[field]) : '';
-        
-        // Для дат сравниваем только часть YYYY-MM-DD, чтобы не ловить разницу в часовых поясах
+
+    
         let isChanged = oldVal !== newVal;
         if (field === 'birth_date' || field === 'passport_issue_date') {
           isChanged = oldVal.split('T')[0] !== newVal.split('T')[0];

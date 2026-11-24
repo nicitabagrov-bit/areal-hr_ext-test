@@ -1,26 +1,17 @@
-import { fileURLToPath, URL } from 'node:url';
-import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
-
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-
   server: {
+    host: '0.0.0.0',
+    port: 5173,
     proxy: {
-      // Все запросы на /api пересылаем на бэкенд,
-      // предварительно убирая префикс /api:
-      // фронт шлёт /api/auth/login, бэкенд получает /auth/login
       '/api': {
-        target: 'http://localhost:3000', // <-- порт твоего бэкенда (вкладка «Порты» внизу VS Code)
+        target: 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        secure: false,
       },
     },
   },
-});
+})

@@ -25,7 +25,6 @@ export class ChangeHistoryService {
   }
 
   async softDelete(id: string) {
-    // Журнал не удаляется, поэтому просто возвращаем сообщение
     return { message: 'History cannot be deleted' };
   }
 }

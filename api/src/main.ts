@@ -2,14 +2,13 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
-import session from 'express-session';
-import * as passport from 'passport';
+import session from 'express-session'; 
 import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
+import passport from 'passport'; 
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
-  // Пункт 2: Возвращаем глобальную валидацию
+  app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -17,12 +16,9 @@ async function bootstrap() {
     }),
   );
 
-  // Пункт 14: Подключаем фильтр ошибок
   app.useGlobalFilters(new AllExceptionsFilter());
-
   app.use(cookieParser());
   
-  // Пункт 3: Настройка сессий через .env
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'super-secret-key',
@@ -32,7 +28,7 @@ async function bootstrap() {
         httpOnly: true,
         secure: process.env.COOKIE_SECURE === 'true',
         sameSite: process.env.COOKIE_SAME_SITE === 'none' ? 'none' : 'lax',
-        maxAge: 1000 * 60 * 60 * 24, // 24 часа
+        maxAge: 1000 * 60 * 60 * 24,
       },
     }),
   );

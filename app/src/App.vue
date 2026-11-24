@@ -452,7 +452,6 @@ const newUserPassword = ref('')
 const newUserRoleId = ref('')
 const roles = ref([])
 
-// Модалка редактирования пользователя
 const isUserModalOpen = ref(false)
 const editingUser = ref({})
 
@@ -542,7 +541,10 @@ const deleteUser = async (id) => {
       method: 'DELETE',
       credentials: 'include'
     })
-    if (!res.ok) throw new Error('Ошибка удаления')
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.message || 'Ошибка удаления')
+    }
     fetchUsers()
   } catch (error) { showError(error) }
 }
@@ -594,10 +596,10 @@ onMounted(async () => {
         <button @click="activeTab = 'files'" :style="{ fontWeight: activeTab === 'files' ? 'bold' : 'normal' }">Файлы</button>
         <button @click="activeTab = 'ops'" :style="{ fontWeight: activeTab === 'ops' ? 'bold' : 'normal' }">Операции</button>
         <button @click="activeTab = 'history'" :style="{ fontWeight: activeTab === 'history' ? 'bold' : 'normal' }">История</button>
-        
+
         <!-- ПУНКТ 12: Показываем вкладку ТОЛЬКО админу -->
         <button v-if="currentUser?.role_name === 'admin'" @click="activeTab = 'users'" :style="{ fontWeight: activeTab === 'users' ? 'bold' : 'normal' }">Пользователи</button>
-        
+
         <span style="margin-left: auto; font-size: 0.9em; color: #555;">
           {{ currentUser?.last_name }} {{ currentUser?.first_name }} ({{ currentUser?.role_name }})
         </span>
@@ -722,7 +724,7 @@ onMounted(async () => {
         </div>
         <ul>
           <li v-for="file in files" :key="file.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-            <span><strong>{{ file.name }}</strong> <a :href="`http://localhost:3000/files/${file.id}/download`" target="_blank" style="margin-left: 10px; color: blue;">(Скачать)</a></span>
+            <span><strong>{{ file.name }}</strong> <a :href="`/api/files/${file.id}/download`" target="_blank" style="margin-left: 10px; color: blue;">(Скачать)</a></span>
             <span><button @click="deleteFile(file.id)" style="color: red; cursor: pointer;">❌</button></span>
           </li>
         </ul>
@@ -799,7 +801,7 @@ onMounted(async () => {
               <td>{{ user.login }}</td>
               <td>{{ user.role_name }}</td>
               <td>
-                <span v-if="user.deleted_at" style="color: red;">Удален</span>
+                <span v-if="user.deleted_at" style="color: red;">Удалён</span>
                 <span v-else style="color: green;">Активен</span>
               </td>
               <td>

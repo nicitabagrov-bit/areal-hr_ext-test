@@ -28,14 +28,13 @@ export class PassportsController {
 
   @Post()
   create(@Body() createPassportDto: CreatePassportDto) {
-    // Теперь валидация произойдет автоматически благодаря ValidationPipe в main.ts
     return this.passportsService.create(createPassportDto);
   }
 
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string, 
-    @Body() updateDto: any // Для обновления лучше тоже сделать UpdatePassportDto, но пока можно оставить any
+    @Body() updateDto: any 
   ) {
     return this.passportsService.update(id, updateDto);
   }

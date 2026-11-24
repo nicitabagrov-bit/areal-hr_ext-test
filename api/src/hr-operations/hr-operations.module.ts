@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { HrOperationsService } from './hr-operations.service.js';
 import { HrOperationsController } from './hr-operations.controller.js';
-import { ChangeHistoryModule } from '../change-history/change-history.module.js'; // <-- ДОБАВИТЬ
+import { ChangeHistoryModule } from '../change-history/change-history.module.js'; 
 
 @Module({
-  imports: [ChangeHistoryModule], // <-- ДОБАВИТЬ
+  imports: [ChangeHistoryModule], 
   controllers: [HrOperationsController],
   providers: [HrOperationsService],
 })

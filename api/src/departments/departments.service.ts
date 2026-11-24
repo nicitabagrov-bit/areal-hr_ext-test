@@ -23,7 +23,6 @@ export class DepartmentsService {
       throw new BadRequestException('Organization not found');
     }
 
-    // 2. Проверяем родителя (если передан)
     if (data.parent_id) {
       const parentCheck = await this.pool.query('SELECT id FROM departments WHERE id = $1 AND deleted_at IS NULL', [data.parent_id]);
       if (parentCheck.rowCount === 0) {

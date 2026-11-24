@@ -8,11 +8,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
   providers: [
     {
       provide: 'PG_POOL',
-      useFactory: (configService: ConfigService) => {
-        return new Pool({
+      useFactory: (configService: ConfigService) =>
+        new Pool({
           connectionString: configService.get<string>('DATABASE_URL'),
-        });
-      },
+        },
+      ),
       inject: [ConfigService],
     },
   ],
