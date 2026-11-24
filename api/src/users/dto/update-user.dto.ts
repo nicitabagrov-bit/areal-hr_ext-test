@@ -14,15 +14,11 @@ export class UpdateUserDto {
   middle_name?: string;
 
   @IsString()
-  @IsOptional()
-  login?: string;
-
-  @IsString()
   @MinLength(6, { message: 'Пароль должен быть не менее 6 символов' })
   @IsOptional()
   password?: string;
 
-  @IsUUID('4')
+  @IsUUID('4', { message: 'role_id должен быть валидным UUID' })
   @IsOptional()
   role_id?: string;
 }

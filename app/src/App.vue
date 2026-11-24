@@ -442,7 +442,7 @@ const fetchHistory = async () => {
   } catch (error) { showError(error) }
 }
 
-// --- ПОЛЬЗОВАТЕЛИ ---
+// --- ПОЛЬЗОВАТЕЛИ (ПУНКТ 12) ---
 const users = ref([])
 const newUserLastName = ref('')
 const newUserFirstName = ref('')
@@ -450,16 +450,16 @@ const newUserMiddleName = ref('')
 const newUserLogin = ref('')
 const newUserPassword = ref('')
 const newUserRoleId = ref('')
-
-// Роли грузим с бэкенда, никакого хардкода UUID
 const roles = ref([])
+
+// Модалка редактирования пользователя
+const isUserModalOpen = ref(false)
+const editingUser = ref({})
 
 const fetchRoles = async () => {
   try {
     const res = await fetch('/api/roles', { credentials: 'include' })
-    if (res.ok) {
-      roles.value = await res.json()
-    }
+    if (res.ok) roles.value = await res.json()
   } catch (error) { showError(error) }
 }
 
@@ -510,6 +510,31 @@ const createUser = async () => {
   } catch (error) { showError(error) }
 }
 
+const openEditUser = (user) => {
+  editingUser.value = { ...user }
+  isUserModalOpen.value = true
+}
+
+const saveUserChanges = async () => {
+  try {
+    const res = await fetch(`/api/users/${editingUser.value.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        last_name: editingUser.value.last_name,
+        first_name: editingUser.value.first_name,
+        middle_name: editingUser.value.middle_name,
+        role_id: editingUser.value.role_id
+      })
+    })
+    if (!res.ok) throw new Error('Ошибка обновления')
+    isUserModalOpen.value = false
+    fetchUsers()
+    alert('Пользователь обновлен!')
+  } catch (error) { showError(error) }
+}
+
 const deleteUser = async (id) => {
   if (!confirm('Удалить пользователя?')) return
   try {
@@ -532,8 +557,10 @@ const loadAll = () => {
   fetchCategories()
   fetchOperations()
   fetchHistory()
-  fetchUsers()
-  fetchRoles()
+  if (currentUser.value?.role_name === 'admin') {
+    fetchUsers()
+    fetchRoles()
+  }
 }
 
 onMounted(async () => {
@@ -567,13 +594,17 @@ onMounted(async () => {
         <button @click="activeTab = 'files'" :style="{ fontWeight: activeTab === 'files' ? 'bold' : 'normal' }">Файлы</button>
         <button @click="activeTab = 'ops'" :style="{ fontWeight: activeTab === 'ops' ? 'bold' : 'normal' }">Операции</button>
         <button @click="activeTab = 'history'" :style="{ fontWeight: activeTab === 'history' ? 'bold' : 'normal' }">История</button>
-        <button @click="activeTab = 'users'" :style="{ fontWeight: activeTab === 'users' ? 'bold' : 'normal' }">Пользователи</button>
+        
+        <!-- ПУНКТ 12: Показываем вкладку ТОЛЬКО админу -->
+        <button v-if="currentUser?.role_name === 'admin'" @click="activeTab = 'users'" :style="{ fontWeight: activeTab === 'users' ? 'bold' : 'normal' }">Пользователи</button>
+        
         <span style="margin-left: auto; font-size: 0.9em; color: #555;">
           {{ currentUser?.last_name }} {{ currentUser?.first_name }} ({{ currentUser?.role_name }})
         </span>
         <button @click="logout" style="cursor: pointer;">Выйти</button>
       </div>
 
+      <!-- ОРГАНИЗАЦИИ -->
       <div v-if="activeTab === 'orgs'">
         <h2>Организации</h2>
         <div style="margin-bottom: 20px;">
@@ -591,6 +622,7 @@ onMounted(async () => {
         </ul>
       </div>
 
+      <!-- ОТДЕЛЫ -->
       <div v-if="activeTab === 'deps'">
         <h2>Отделы</h2>
         <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
@@ -614,6 +646,7 @@ onMounted(async () => {
         </ul>
       </div>
 
+      <!-- ДОЛЖНОСТИ -->
       <div v-if="activeTab === 'pos'">
         <h2>Должности</h2>
         <div style="margin-bottom: 20px;">
@@ -631,6 +664,7 @@ onMounted(async () => {
         </ul>
       </div>
 
+      <!-- СОТРУДНИКИ -->
       <div v-if="activeTab === 'emp'">
         <h2>Сотрудники</h2>
         <div style="margin-bottom: 20px; display: flex; gap: 10px;">
@@ -668,6 +702,7 @@ onMounted(async () => {
         </table>
       </div>
 
+      <!-- ФАЙЛЫ -->
       <div v-if="activeTab === 'files'">
         <h2>Файлы (Сканы)</h2>
         <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
@@ -693,6 +728,7 @@ onMounted(async () => {
         </ul>
       </div>
 
+      <!-- ОПЕРАЦИИ -->
       <div v-if="activeTab === 'ops'">
         <h2>Кадровые операции</h2>
         <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
@@ -726,6 +762,7 @@ onMounted(async () => {
         </ul>
       </div>
 
+      <!-- ИСТОРИЯ -->
       <div v-if="activeTab === 'history'">
         <h2>История изменений</h2>
         <ul>
@@ -736,6 +773,7 @@ onMounted(async () => {
         </ul>
       </div>
 
+      <!-- ПОЛЬЗОВАТЕЛИ (ПУНКТ 12) -->
       <div v-if="activeTab === 'users'">
         <h2>Управление пользователями</h2>
         <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #ccc; padding: 15px; border-radius: 8px;">
@@ -753,19 +791,27 @@ onMounted(async () => {
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
           <thead>
-            <tr style="background: #f0f0f0;"><th>ФИО</th><th>Логин</th><th>Роль</th><th>Действия</th></tr>
+            <tr style="background: #f0f0f0;"><th>ФИО</th><th>Логин</th><th>Роль</th><th>Статус</th><th>Действия</th></tr>
           </thead>
           <tbody>
             <tr v-for="user in users" :key="user.id" style="border-bottom: 1px solid #eee;">
               <td>{{ user.last_name }} {{ user.first_name }} {{ user.middle_name }}</td>
               <td>{{ user.login }}</td>
               <td>{{ user.role_name }}</td>
-              <td><button @click="deleteUser(user.id)" style="color: red; cursor: pointer;">❌</button></td>
+              <td>
+                <span v-if="user.deleted_at" style="color: red;">Удален</span>
+                <span v-else style="color: green;">Активен</span>
+              </td>
+              <td>
+                <button @click="openEditUser(user)" style="margin-right: 5px; cursor: pointer;">✏️</button>
+                <button @click="deleteUser(user.id)" style="color: red; cursor: pointer;">❌</button>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
+      <!-- МОДАЛКА РЕДАКТИРОВАНИЯ СОТРУДНИКА -->
       <div v-if="isEditModalOpen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
         <div style="background: white; padding: 20px; border-radius: 8px; width: 500px; max-height: 90vh; overflow-y: auto;">
           <h3>Редактирование: {{ editingEmployee.last_name }} {{ editingEmployee.first_name }}</h3>
@@ -790,6 +836,24 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+
+      <!-- МОДАЛКА РЕДАКТИРОВАНИЯ ПОЛЬЗОВАТЕЛЯ -->
+      <div v-if="isUserModalOpen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: white; padding: 20px; border-radius: 8px; width: 400px;">
+          <h3>Редактирование: {{ editingUser.login }}</h3>
+          <input v-model="editingUser.last_name" placeholder="Фамилия" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
+          <input v-model="editingUser.first_name" placeholder="Имя" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
+          <input v-model="editingUser.middle_name" placeholder="Отчество" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
+          <select v-model="editingUser.role_id" style="width: 100%; padding: 8px; margin-bottom: 20px; box-sizing: border-box;">
+            <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+          </select>
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button @click="isUserModalOpen = false" style="padding: 8px 16px; cursor: pointer;">Отмена</button>
+            <button @click="saveUserChanges" style="padding: 8px 16px; background: #42b983; color: white; border: none; cursor: pointer;">Сохранить</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
