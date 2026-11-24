@@ -1,40 +1,49 @@
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { ValidationPipe } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 import session from 'express-session';
-import passport from 'passport';
+import * as passport from 'passport';
+import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create(AppModule);
+  
+  // Пункт 2: Возвращаем глобальную валидацию
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
 
-  // Бэкенд за прокси Codespaces: без этого express-session
-  // с secure: true молча не ставит куку
-  app.set('trust proxy', 1);
+  // Пункт 14: Подключаем фильтр ошибок
+  app.useGlobalFilters(new AllExceptionsFilter());
 
-  app.enableCors({
-    origin: 'https://unhallowed-spooky-haunting-jr9v757pvxq4h54p9-5173.app.github.dev',
-    credentials: true,
-  });
-
+  app.use(cookieParser());
+  
+  // Пункт 3: Настройка сессий через .env
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
+      secret: process.env.SESSION_SECRET || 'super-secret-key',
       resave: false,
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        sameSite: 'none',
-        secure: true,
-        maxAge: 1000 * 60 * 60 * 24,
+        secure: process.env.COOKIE_SECURE === 'true',
+        sameSite: process.env.COOKIE_SAME_SITE === 'none' ? 'none' : 'lax',
+        maxAge: 1000 * 60 * 60 * 24, // 24 часа
       },
     }),
   );
 
-  passport.serializeUser((user: any, done) => done(null, user));
-  passport.deserializeUser((user: any, done) => done(null, user));
-
   app.use(passport.initialize());
   app.use(passport.session());
+
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+  });
 
   await app.listen(3000);
 }
