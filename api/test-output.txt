@@ -1,0 +1,61 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90m/workspaces/areal-hr_ext-test/api[39m
+
+ [31m❯[39m src/users/users.service.spec.ts [2m([22m[2m14 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[33m 505[2mms[22m[39m
+     [32m✓[39m should be defined[32m 77[2mms[22m[39m
+[31m       [31m×[31m создаёт админа, если пользователей нет[39m[32m 138[2mms[22m[39m
+       [32m✓[39m ничего не делает, если пользователи уже есть[32m 4[2mms[22m[39m
+       [32m✓[39m возвращает список пользователей[32m 3[2mms[22m[39m
+       [32m✓[39m создаёт пользователя[32m 130[2mms[22m[39m
+       [32m✓[39m бросает ошибку, если логин занят[32m 3[2mms[22m[39m
+       [32m✓[39m обновляет пользователя без смены роли[32m 2[2mms[22m[39m
+       [32m✓[39m запрещает снимать роль админа с самого себя (п. 10)[32m 2[2mms[22m[39m
+[31m       [31m×[31m бросает 404, если пользователь не найден[39m[32m 4[2mms[22m[39m
+       [32m✓[39m обновляет пароль хешем, а не открытым текстом[32m 132[2mms[22m[39m
+       [32m✓[39m запрещает удалять самого себя[32m 2[2mms[22m[39m
+       [32m✓[39m запрещает удалять последнего администратора[32m 2[2mms[22m[39m
+       [32m✓[39m удаляет обычного пользователя[32m 1[2mms[22m[39m
+       [32m✓[39m бросает 404, если пользователь не найден[32m 1[2mms[22m[39m
+ [32m✓[39m src/users/users.controller.spec.ts [2m([22m[2m1 test[22m[2m)[22m[32m 87[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/users/users.service.spec.ts[2m > [22mUsersService[2m > [22monModuleInit (создание первого админа)[2m > [22mсоздаёт админа, если пользователей нет
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called 3 times, but got 2 times[39m
+[36m [2m❯[22m src/users/users.service.spec.ts:[2m41:30[22m[39m
+    [90m 39|[39m       [35mawait[39m service[33m.[39m[34monModuleInit[39m()[33m;[39m
+    [90m 40|[39m
+    [90m 41|[39m       [34mexpect[39m(mockPool[33m.[39mquery)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m3[39m)[33m;[39m
+    [90m   |[39m                              [31m^[39m
+    [90m 42|[39m     })[33m;[39m
+    [90m 43|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/users/users.service.spec.ts[2m > [22mUsersService[2m > [22mupdate[2m > [22mбросает 404, если пользователь не найден
+[31m[1mAssertionError[22m: promise resolved "undefined" instead of rejecting[39m
+
+[32m- Expected:[39m
+Error {
+  "message": "rejected promise",
+}
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m src/users/users.service.spec.ts:[2m140:8[22m[39m
+    [90m138|[39m       [35mawait[39m [34mexpect[39m(
+    [90m139|[39m         service.update('no-such-id', { first_name: 'X' } as any, 'u-ot…
+    [90m140|[39m       )[33m.[39mrejects[33m.[39m[34mtoThrow[39m([33mNotFoundException[39m)[33m;[39m
+    [90m   |[39m        [31m^[39m
+    [90m141|[39m     })[33m;[39m
+    [90m142|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m13 passed[39m[22m[90m (15)[39m
+[2m   Start at [22m 08:12:11
+[2m   Duration [22m 1.82s[2m (transform 132ms, setup 0ms, import 909ms, tests 592ms, environment 0ms)[22m
+

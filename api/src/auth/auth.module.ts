@@ -5,6 +5,7 @@ import { LocalStrategy } from './local.strategy.js';
 import { PassportModule } from '@nestjs/passport';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth.guard.js';
+import { RolesGuard } from '../common/roles.guard.js';
 import { SessionSerializer } from './session.serializer.js';
 import { UsersModule } from '../users/users.module.js';
 
@@ -18,6 +19,10 @@ import { UsersModule } from '../users/users.module.js';
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
   exports: [AuthService],

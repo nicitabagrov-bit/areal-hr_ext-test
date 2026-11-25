@@ -27,7 +27,7 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  // Пункт 11: Показываем всех, включая удаленных (добавлено поле deleted_at)
+
   async findAll() {
     const res = await this.pool.query(`
       SELECT u.id, u.last_name, u.first_name, u.middle_name, u.login, r.name as role_name, u.role_id, u.deleted_at 
@@ -38,7 +38,7 @@ export class UsersService implements OnModuleInit {
     return res.rows;
   }
 
-  // Создание нового пользователя
+ 
   async create(data: CreateUserDto) {
     const check = await this.pool.query('SELECT id FROM users WHERE login = $1', [data.login]);
     if (check.rows.length > 0) throw new BadRequestException('Пользователь с таким логином уже существует');
@@ -53,13 +53,12 @@ export class UsersService implements OnModuleInit {
     return res.rows[0];
   }
 
-  // Редактирование пользователя (PATCH)
   async update(id: string, data: any, currentUserId: string) {
-    // 1. Проверяем, что пользователь существует
+
     const check = await this.pool.query('SELECT * FROM users WHERE id = $1', [id]);
     if (check.rowCount === 0) throw new NotFoundException('Пользователь не найден');
 
-    // 2. Защита от снятия роли админа с самого себя (Пункт 10)
+
     if (data.role_id) {
        const adminRole = await this.pool.query("SELECT id FROM roles WHERE name = 'admin'");
        const currentUser = await this.pool.query('SELECT role_id FROM users WHERE id = $1', [currentUserId]);
@@ -81,7 +80,7 @@ export class UsersService implements OnModuleInit {
       }
     }
 
-    // Если передан новый пароль — хэшируем
+   
     if (data.password) {
       const hash = await argon2.hash(data.password, { type: argon2.argon2id });
       fields.push(`password_hash = $${idx++}`);
@@ -97,7 +96,7 @@ export class UsersService implements OnModuleInit {
     return res.rows[0];
   }
 
-  // Мягкое удаление с защитой (Пункт 10)
+
   async softDelete(id: string, currentUserId: string) {
     if (id === currentUserId) {
       throw new BadRequestException('Нельзя удалить самого себя');

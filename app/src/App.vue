@@ -74,7 +74,7 @@ const newOrgName = ref('')
 const fetchOrganizations = async () => {
   try {
     const res = await fetch('/api/organizations', { credentials: 'include' })
-    organizations.value = await res.json()
+    if (res.ok) organizations.value = await res.json()
   } catch (error) { showError(error) }
 }
 const createOrganization = async () => {
@@ -123,7 +123,7 @@ const selectedOrgId = ref('')
 const fetchDepartments = async () => {
   try {
     const res = await fetch('/api/departments', { credentials: 'include' })
-    departments.value = await res.json()
+    if (res.ok) departments.value = await res.json()
   } catch (error) { showError(error) }
 }
 const createDepartment = async () => {
@@ -171,7 +171,7 @@ const newPosName = ref('')
 const fetchPositions = async () => {
   try {
     const res = await fetch('/api/positions', { credentials: 'include' })
-    positions.value = await res.json()
+    if (res.ok) positions.value = await res.json()
   } catch (error) { showError(error) }
 }
 const createPosition = async () => {
@@ -225,7 +225,7 @@ const editingEmployee = ref({})
 const fetchEmployees = async () => {
   try {
     const res = await fetch('/api/employees', { credentials: 'include' })
-    employees.value = await res.json()
+    if (res.ok) employees.value = await res.json()
   } catch (error) { showError(error) }
 }
 const createEmployee = async () => {
@@ -341,13 +341,13 @@ const categories = ref([])
 const fetchFiles = async () => {
   try {
     const res = await fetch('/api/files', { credentials: 'include' })
-    files.value = await res.json()
+    if (res.ok) files.value = await res.json()
   } catch (error) { showError(error) }
 }
 const fetchCategories = async () => {
   try {
     const res = await fetch('/api/file-categories', { credentials: 'include' })
-    categories.value = await res.json()
+    if (res.ok) categories.value = await res.json()
   } catch (error) { showError(error) }
 }
 const uploadFile = async () => {
@@ -390,7 +390,7 @@ const opPositionId = ref('')
 const fetchOperations = async () => {
   try {
     const res = await fetch('/api/hr-operations', { credentials: 'include' })
-    operations.value = await res.json()
+    if (res.ok) operations.value = await res.json()
   } catch (error) { showError(error) }
 }
 const createOperation = async () => {
@@ -438,11 +438,11 @@ const history = ref([])
 const fetchHistory = async () => {
   try {
     const res = await fetch('/api/change-history', { credentials: 'include' })
-    history.value = await res.json()
+    if (res.ok) history.value = await res.json()
   } catch (error) { showError(error) }
 }
 
-// --- ПОЛЬЗОВАТЕЛИ (ПУНКТ 12) ---
+// --- ПОЛЬЗОВАТЕЛИ ---
 const users = ref([])
 const newUserLastName = ref('')
 const newUserFirstName = ref('')
@@ -451,7 +451,6 @@ const newUserLogin = ref('')
 const newUserPassword = ref('')
 const newUserRoleId = ref('')
 const roles = ref([])
-
 const isUserModalOpen = ref(false)
 const editingUser = ref({})
 
@@ -469,8 +468,6 @@ const fetchUsers = async () => {
       users.value = await res.json()
     } else if (res.status === 401) {
       isAuthenticated.value = false
-    } else {
-      console.warn('Нет доступа к пользователям')
     }
   } catch (error) { showError(error) }
 }
@@ -541,10 +538,7 @@ const deleteUser = async (id) => {
       method: 'DELETE',
       credentials: 'include'
     })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(err.message || 'Ошибка удаления')
-    }
+    if (!res.ok) throw new Error('Ошибка удаления')
     fetchUsers()
   } catch (error) { showError(error) }
 }
@@ -596,10 +590,9 @@ onMounted(async () => {
         <button @click="activeTab = 'files'" :style="{ fontWeight: activeTab === 'files' ? 'bold' : 'normal' }">Файлы</button>
         <button @click="activeTab = 'ops'" :style="{ fontWeight: activeTab === 'ops' ? 'bold' : 'normal' }">Операции</button>
         <button @click="activeTab = 'history'" :style="{ fontWeight: activeTab === 'history' ? 'bold' : 'normal' }">История</button>
-
-        <!-- ПУНКТ 12: Показываем вкладку ТОЛЬКО админу -->
+        
         <button v-if="currentUser?.role_name === 'admin'" @click="activeTab = 'users'" :style="{ fontWeight: activeTab === 'users' ? 'bold' : 'normal' }">Пользователи</button>
-
+        
         <span style="margin-left: auto; font-size: 0.9em; color: #555;">
           {{ currentUser?.last_name }} {{ currentUser?.first_name }} ({{ currentUser?.role_name }})
         </span>
@@ -724,7 +717,7 @@ onMounted(async () => {
         </div>
         <ul>
           <li v-for="file in files" :key="file.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-            <span><strong>{{ file.name }}</strong> <a :href="`/api/files/${file.id}/download`" target="_blank" style="margin-left: 10px; color: blue;">(Скачать)</a></span>
+            <span><strong>{{ file.name }}</strong> <a :href="`http://localhost:3000/files/${file.id}/download`" target="_blank" style="margin-left: 10px; color: blue;">(Скачать)</a></span>
             <span><button @click="deleteFile(file.id)" style="color: red; cursor: pointer;">❌</button></span>
           </li>
         </ul>
@@ -775,7 +768,7 @@ onMounted(async () => {
         </ul>
       </div>
 
-      <!-- ПОЛЬЗОВАТЕЛИ (ПУНКТ 12) -->
+      <!-- ПОЛЬЗОВАТЕЛИ -->
       <div v-if="activeTab === 'users'">
         <h2>Управление пользователями</h2>
         <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #ccc; padding: 15px; border-radius: 8px;">
@@ -801,7 +794,7 @@ onMounted(async () => {
               <td>{{ user.login }}</td>
               <td>{{ user.role_name }}</td>
               <td>
-                <span v-if="user.deleted_at" style="color: red;">Удалён</span>
+                <span v-if="user.deleted_at" style="color: red;">Удален</span>
                 <span v-else style="color: green;">Активен</span>
               </td>
               <td>
