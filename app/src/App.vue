@@ -1,14 +1,14 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { Notify } from 'quasar'
 
 const showError = (error) => {
-  if (error.response && error.response.data && error.response.data.message) {
-    const msg = error.response.data.message;
-    alert('Ошибка: ' + (Array.isArray(msg) ? msg.join(', ') : msg));
-  } else {
-    alert('Ошибка: ' + (error.message || 'Что-то пошло не так'));
-  }
+  const msg = error.response?.data?.message
+    ? (Array.isArray(error.response.data.message) ? error.response.data.message.join(', ') : error.response.data.message)
+    : (error.message || 'Что-то пошло не так')
+  Notify.create({ type: 'negative', message: 'Ошибка: ' + msg })
 }
+const notifyOk = (message) => Notify.create({ type: 'positive', message })
 
 // --- СОСТОЯНИЕ ВХОДА ---
 const isAuthenticated = ref(false)
@@ -29,7 +29,7 @@ const checkAuth = async () => {
 
 const login = async () => {
   if (!loginInput.value || !passwordInput.value) {
-    alert('Введите логин и пароль')
+    Notify.create({ type: 'warning', message: 'Введите логин и пароль' })
     return
   }
   loggingIn.value = true
@@ -118,7 +118,7 @@ const editOrganization = async (org) => {
 // --- ОТДЕЛЫ ---
 const departments = ref([])
 const newDepName = ref('')
-const selectedOrgId = ref('')
+const selectedOrgId = ref(null)
 
 const fetchDepartments = async () => {
   try {
@@ -218,7 +218,7 @@ const newEmpLastName = ref('')
 const newEmpFirstName = ref('')
 const newEmpBirthDate = ref('')
 const searchQuery = ref('')
-const filterDepartmentId = ref('')
+const filterDepartmentId = ref(null)
 const isEditModalOpen = ref(false)
 const editingEmployee = ref({})
 
@@ -255,14 +255,14 @@ const openEditModal = (emp) => {
 }
 
 const saveEmployeeChanges = async () => {
-  const emp = editingEmployee.value;
+  const emp = editingEmployee.value
   try {
     await fetch(`/api/employees/${emp.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ phone: emp.phone })
-    });
+    })
 
     if (emp.passport_series) {
       await fetch('/api/passports', {
@@ -277,7 +277,7 @@ const saveEmployeeChanges = async () => {
           issued_by: emp.passport_issued_by,
           department_code: emp.passport_department_code
         })
-      });
+      })
     }
 
     if (emp.address_city) {
@@ -294,46 +294,55 @@ const saveEmployeeChanges = async () => {
           building: emp.address_building,
           apartment: emp.address_apartment
         })
-      });
+      })
     }
 
-    isEditModalOpen.value = false;
-    fetchEmployees();
-    alert('Данные сохранены!');
+    isEditModalOpen.value = false
+    fetchEmployees()
+    notifyOk('Данные сохранены!')
   } catch (error) {
-    showError(error);
+    showError(error)
   }
 }
 
 const getDepartmentName = (id) => {
-  if (!id) return '-';
-  const dep = departments.value.find(d => d.id === id);
-  return dep ? dep.name : 'Не найден';
+  if (!id) return '-'
+  const dep = departments.value.find(d => d.id === id)
+  return dep ? dep.name : 'Не найден'
 }
 const getPositionName = (id) => {
-  if (!id) return '-';
-  const pos = positions.value.find(p => p.id === id);
-  return pos ? pos.name : 'Не найден';
+  if (!id) return '-'
+  const pos = positions.value.find(p => p.id === id)
+  return pos ? pos.name : 'Не найден'
 }
 
 const filteredEmployees = computed(() => {
-  let result = employees.value;
+  let result = employees.value
   if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
+    const q = searchQuery.value.toLowerCase()
     result = result.filter(e =>
       `${e.last_name} ${e.first_name} ${e.middle_name || ''}`.toLowerCase().includes(q)
-    );
+    )
   }
   if (filterDepartmentId.value) {
-    result = result.filter(e => e.department_id === filterDepartmentId.value);
+    result = result.filter(e => e.department_id === filterDepartmentId.value)
   }
-  return result;
-});
+  return result
+})
+
+const employeeColumns = [
+  { name: 'fio', label: 'ФИО', field: 'last_name', align: 'left' },
+  { name: 'phone', label: 'Телефон', field: 'phone', align: 'left', format: v => v || '-' },
+  { name: 'department', label: 'Отдел', field: r => getDepartmentName(r.department_id), align: 'left' },
+  { name: 'position', label: 'Должность', field: r => getPositionName(r.position_id), align: 'left' },
+  { name: 'status', label: 'Статус', field: r => r.dismissed_at ? 'Уволен' : 'Работает', align: 'left' },
+  { name: 'actions', label: 'Действия', field: () => '', align: 'center' },
+]
 
 // --- ФАЙЛЫ ---
 const files = ref([])
-const fileEmployeeId = ref('')
-const fileCategoryId = ref('')
+const fileEmployeeId = ref(null)
+const fileCategoryId = ref(null)
 const fileInput = ref(null)
 const fileName = ref('')
 const categories = ref([])
@@ -367,9 +376,6 @@ const uploadFile = async () => {
     fetchFiles()
   } catch (error) { showError(error) }
 }
-const handleFileChange = (e) => {
-  fileInput.value = e.target.files[0]
-}
 const deleteFile = async (id) => {
   if (!confirm('Удалить файл?')) return
   try {
@@ -381,11 +387,11 @@ const deleteFile = async (id) => {
 
 // --- КАДРОВЫЕ ОПЕРАЦИИ ---
 const operations = ref([])
-const opEmployeeId = ref('')
+const opEmployeeId = ref(null)
 const opType = ref('hire')
 const opSalary = ref('')
-const opDepartmentId = ref('')
-const opPositionId = ref('')
+const opDepartmentId = ref(null)
+const opPositionId = ref(null)
 
 const fetchOperations = async () => {
   try {
@@ -411,13 +417,13 @@ const createOperation = async () => {
       body: JSON.stringify(data)
     })
     if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(errData.message || 'Ошибка создания операции');
+      const errData = await res.json()
+      throw new Error(errData.message || 'Ошибка создания операции')
     }
-    opEmployeeId.value = ''
+    opEmployeeId.value = null
     opSalary.value = ''
-    opDepartmentId.value = ''
-    opPositionId.value = ''
+    opDepartmentId.value = null
+    opPositionId.value = null
     fetchOperations()
     fetchEmployees()
   } catch (error) { showError(error) }
@@ -449,7 +455,7 @@ const newUserFirstName = ref('')
 const newUserMiddleName = ref('')
 const newUserLogin = ref('')
 const newUserPassword = ref('')
-const newUserRoleId = ref('')
+const newUserRoleId = ref(null)
 const roles = ref([])
 const isUserModalOpen = ref(false)
 const editingUser = ref({})
@@ -474,7 +480,7 @@ const fetchUsers = async () => {
 
 const createUser = async () => {
   if (!newUserLastName.value || !newUserFirstName.value || !newUserLogin.value || !newUserPassword.value || !newUserRoleId.value) {
-    alert('Заполните все обязательные поля!')
+    Notify.create({ type: 'warning', message: 'Заполните все обязательные поля!' })
     return
   }
   try {
@@ -500,9 +506,9 @@ const createUser = async () => {
     newUserMiddleName.value = ''
     newUserLogin.value = ''
     newUserPassword.value = ''
-    newUserRoleId.value = ''
+    newUserRoleId.value = null
     fetchUsers()
-    alert('Пользователь создан!')
+    notifyOk('Пользователь создан!')
   } catch (error) { showError(error) }
 }
 
@@ -527,21 +533,48 @@ const saveUserChanges = async () => {
     if (!res.ok) throw new Error('Ошибка обновления')
     isUserModalOpen.value = false
     fetchUsers()
-    alert('Пользователь обновлен!')
+    notifyOk('Пользователь обновлен!')
   } catch (error) { showError(error) }
 }
 
 const deleteUser = async (id) => {
+  const user = users.value.find(u => u.id === id)
+
+  if (user?.deleted_at) {
+    Notify.create({
+      type: 'warning',
+      message: 'Этот пользователь уже удалён',
+      timeout: 1500
+    })
+    return
+  }
+
   if (!confirm('Удалить пользователя?')) return
+
   try {
     const res = await fetch(`/api/users/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
-    if (!res.ok) throw new Error('Ошибка удаления')
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.message || 'Ошибка удаления')
+    }
+
     fetchUsers()
-  } catch (error) { showError(error) }
+  } catch (error) {
+    showError(error)
+  }
 }
+
+const userColumns = [
+  { name: 'fio', label: 'ФИО', field: 'last_name', align: 'left' },
+  { name: 'login', label: 'Логин', field: 'login', align: 'left' },
+  { name: 'role', label: 'Роль', field: 'role_name', align: 'left' },
+  { name: 'status', label: 'Статус', field: r => r.deleted_at ? 'Удален' : 'Активен', align: 'left' },
+  { name: 'actions', label: 'Действия', field: () => '', align: 'center' },
+]
 
 // --- ЗАПУСК ---
 const loadAll = () => {
@@ -568,287 +601,454 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div style="padding: 20px; font-family: sans-serif; max-width: 900px; margin: 0 auto;">
+  <q-layout view="hHh lpR fFf">
 
     <!-- ЭКРАН ВХОДА -->
-    <div v-if="!isAuthenticated" style="max-width: 360px; margin: 80px auto; border: 1px solid #ddd; border-radius: 8px; padding: 30px;">
-      <h2 style="text-align: center;">Вход в систему</h2>
-      <input v-model="loginInput" placeholder="Логин" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-      <input v-model="passwordInput" type="password" placeholder="Пароль" style="width: 100%; padding: 8px; margin-bottom: 15px; box-sizing: border-box;" @keyup.enter="login" />
-      <button @click="login" :disabled="loggingIn" style="width: 100%; padding: 10px; background: #42b983; color: white; border: none; cursor: pointer;">
-        {{ loggingIn ? 'Входим...' : 'Войти' }}
-      </button>
-    </div>
+    <q-page-container v-if="!isAuthenticated">
+      <q-page class="flex flex-center">
+        <q-card class="q-pa-lg" style="width: 100%; max-width: 380px;">
+          <q-card-section class="text-h5 text-center text-weight-bold">
+            Вход в систему
+          </q-card-section>
+          <q-card-section class="q-gutter-y-md">
+            <q-input v-model="loginInput" label="Логин" outlined @keyup.enter="login" />
+            <q-input v-model="passwordInput" label="Пароль" type="password" outlined @keyup.enter="login" />
+          </q-card-section>
+          <q-card-actions align="center">
+            <q-btn
+              color="primary"
+              unelevated
+              class="full-width"
+              :label="loggingIn ? 'Входим...' : 'Войти'"
+              :loading="loggingIn"
+              @click="login"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-page>
+    </q-page-container>
 
     <!-- ОСНОВНОЙ ИНТЕРФЕЙС -->
-    <div v-else>
-      <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; align-items: center;">
-        <button @click="activeTab = 'orgs'" :style="{ fontWeight: activeTab === 'orgs' ? 'bold' : 'normal' }">Организации</button>
-        <button @click="activeTab = 'deps'" :style="{ fontWeight: activeTab === 'deps' ? 'bold' : 'normal' }">Отделы</button>
-        <button @click="activeTab = 'pos'" :style="{ fontWeight: activeTab === 'pos' ? 'bold' : 'normal' }">Должности</button>
-        <button @click="activeTab = 'emp'" :style="{ fontWeight: activeTab === 'emp' ? 'bold' : 'normal' }">Сотрудники</button>
-        <button @click="activeTab = 'files'" :style="{ fontWeight: activeTab === 'files' ? 'bold' : 'normal' }">Файлы</button>
-        <button @click="activeTab = 'ops'" :style="{ fontWeight: activeTab === 'ops' ? 'bold' : 'normal' }">Операции</button>
-        <button @click="activeTab = 'history'" :style="{ fontWeight: activeTab === 'history' ? 'bold' : 'normal' }">История</button>
-        
-        <button v-if="currentUser?.role_name === 'admin'" @click="activeTab = 'users'" :style="{ fontWeight: activeTab === 'users' ? 'bold' : 'normal' }">Пользователи</button>
-        
-        <span style="margin-left: auto; font-size: 0.9em; color: #555;">
-          {{ currentUser?.last_name }} {{ currentUser?.first_name }} ({{ currentUser?.role_name }})
-        </span>
-        <button @click="logout" style="cursor: pointer;">Выйти</button>
-      </div>
+    <template v-else>
+      <q-header elevated class="bg-primary text-white">
+        <q-toolbar>
+          <q-tabs v-model="activeTab" dense inline-label class="col-grow">
+            <q-tab name="orgs" label="Организации" />
+            <q-tab name="deps" label="Отделы" />
+            <q-tab name="pos" label="Должности" />
+            <q-tab name="emp" label="Сотрудники" />
+            <q-tab name="files" label="Файлы" />
+            <q-tab name="ops" label="Операции" />
+            <q-tab name="history" label="История" />
+            <q-tab v-if="currentUser?.role_name === 'admin'" name="users" label="Пользователи" />
+          </q-tabs>
+          <q-space />
+          <span class="text-caption q-mr-sm">
+            {{ currentUser?.last_name }} {{ currentUser?.first_name }} ({{ currentUser?.role_name }})
+          </span>
+          <q-btn flat label="Выйти" @click="logout" />
+        </q-toolbar>
+      </q-header>
 
-      <!-- ОРГАНИЗАЦИИ -->
-      <div v-if="activeTab === 'orgs'">
-        <h2>Организации</h2>
-        <div style="margin-bottom: 20px;">
-          <input v-model="newOrgName" placeholder="Название" style="padding: 8px; width: 60%;" />
-          <button @click="createOrganization" style="padding: 8px 16px; margin-left: 10px; background: #42b983; color: white; border: none; cursor: pointer;">Добавить</button>
-        </div>
-        <ul>
-          <li v-for="org in organizations" :key="org.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-            <span><strong>{{ org.name }}</strong></span>
-            <span>
-              <button @click="editOrganization(org)" style="margin-right: 5px; cursor: pointer;">✏️</button>
-              <button @click="deleteOrganization(org.id)" style="color: red; cursor: pointer;">❌</button>
-            </span>
-          </li>
-        </ul>
-      </div>
+      <q-page-container>
+        <q-page padding>
 
-      <!-- ОТДЕЛЫ -->
-      <div v-if="activeTab === 'deps'">
-        <h2>Отделы</h2>
-        <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
-          <select v-model="selectedOrgId" style="padding: 8px;">
-            <option value="" disabled>Выберите организацию</option>
-            <option v-for="org in organizations" :key="org.id" :value="org.id">{{ org.name }}</option>
-          </select>
-          <div>
-            <input v-model="newDepName" placeholder="Название отдела" style="padding: 8px; width: 60%;" />
-            <button @click="createDepartment" style="padding: 8px 16px; margin-left: 10px; background: #42b983; color: white; border: none; cursor: pointer;">Добавить</button>
+          <!-- ОРГАНИЗАЦИИ -->
+          <div v-if="activeTab === 'orgs'">
+            <div class="text-h5 q-mb-md">Организации</div>
+            <div class="row items-center q-mb-md q-gutter-x-sm">
+              <q-input v-model="newOrgName" label="Название" outlined dense class="col-grow" style="max-width: 400px;" @keyup.enter="createOrganization" />
+              <q-btn color="primary" label="Добавить" unelevated @click="createOrganization" />
+            </div>
+            <q-list bordered separator>
+              <q-item v-for="org in organizations" :key="org.id">
+                <q-item-section>{{ org.name }}</q-item-section>
+                <q-item-section side>
+                  <div class="row q-gutter-x-xs">
+                    <q-btn flat round dense size="sm" color="primary" icon="edit" @click="editOrganization(org)">
+                      <q-tooltip>Редактировать</q-tooltip>
+                    </q-btn>
+                    <q-btn flat round dense size="sm" color="negative" icon="delete" @click="deleteOrganization(org.id)">
+                      <q-tooltip>Удалить</q-tooltip>
+                    </q-btn>
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
           </div>
-        </div>
-        <ul>
-          <li v-for="dep in departments" :key="dep.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-            <span><strong>{{ dep.name }}</strong></span>
-            <span>
-              <button @click="editDepartment(dep)" style="margin-right: 5px; cursor: pointer;">✏️</button>
-              <button @click="deleteDepartment(dep.id)" style="color: red; cursor: pointer;">❌</button>
-            </span>
-          </li>
-        </ul>
-      </div>
 
-      <!-- ДОЛЖНОСТИ -->
-      <div v-if="activeTab === 'pos'">
-        <h2>Должности</h2>
-        <div style="margin-bottom: 20px;">
-          <input v-model="newPosName" placeholder="Название должности" style="padding: 8px; width: 60%;" />
-          <button @click="createPosition" style="padding: 8px 16px; margin-left: 10px; background: #42b983; color: white; border: none; cursor: pointer;">Добавить</button>
-        </div>
-        <ul>
-          <li v-for="pos in positions" :key="pos.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-            <span><strong>{{ pos.name }}</strong></span>
-            <span>
-              <button @click="editPosition(pos)" style="margin-right: 5px; cursor: pointer;">✏️</button>
-              <button @click="deletePosition(pos.id)" style="color: red; cursor: pointer;">❌</button>
-            </span>
-          </li>
-        </ul>
-      </div>
-
-      <!-- СОТРУДНИКИ -->
-      <div v-if="activeTab === 'emp'">
-        <h2>Сотрудники</h2>
-        <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-          <input v-model="searchQuery" placeholder="Поиск по ФИО..." style="padding: 8px; width: 30%;" />
-          <select v-model="filterDepartmentId" style="padding: 8px; width: 30%;">
-            <option value="">Все отделы</option>
-            <option v-for="dep in departments" :key="dep.id" :value="dep.id">{{ dep.name }}</option>
-          </select>
-        </div>
-        <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-          <input v-model="newEmpLastName" placeholder="Фамилия" style="padding: 8px; width: 30%;" />
-          <input v-model="newEmpFirstName" placeholder="Имя" style="padding: 8px; width: 30%;" />
-          <input v-model="newEmpBirthDate" type="date" style="padding: 8px; width: 30%;" />
-          <button @click="createEmployee" style="padding: 8px 16px; background: #42b983; color: white; border: none; cursor: pointer;">Добавить</button>
-        </div>
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="background: #f0f0f0;">
-              <th>ФИО</th><th>Телефон</th><th>Отдел</th><th>Должность</th><th>Статус</th><th>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="emp in filteredEmployees" :key="emp.id" style="border-bottom: 1px solid #eee;">
-              <td>{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</td>
-              <td>{{ emp.phone || '-' }}</td>
-              <td>{{ getDepartmentName(emp.department_id) }}</td>
-              <td>{{ getPositionName(emp.position_id) }}</td>
-              <td>
-                <span v-if="emp.dismissed_at" style="color: red;">Уволен</span>
-                <span v-else style="color: green;">Работает</span>
-              </td>
-              <td><button v-if="!emp.dismissed_at" @click="openEditModal(emp)" style="cursor: pointer;">✏️</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- ФАЙЛЫ -->
-      <div v-if="activeTab === 'files'">
-        <h2>Файлы (Сканы)</h2>
-        <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
-          <select v-model="fileEmployeeId" style="padding: 8px;">
-            <option value="" disabled>Выберите сотрудника</option>
-            <option v-for="emp in employees" :key="emp.id" :value="emp.id">{{ emp.last_name }} {{ emp.first_name }}</option>
-          </select>
-          <select v-model="fileCategoryId" style="padding: 8px;">
-            <option value="">Без категории</option>
-            <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-          </select>
-          <input v-model="fileName" placeholder="Название файла" style="padding: 8px;" />
-          <div>
-            <input type="file" @change="handleFileChange" style="padding: 8px;" />
-            <button @click="uploadFile" style="padding: 8px 16px; background: #42b983; color: white; border: none; cursor: pointer;">Загрузить</button>
+          <!-- ОТДЕЛЫ -->
+          <div v-if="activeTab === 'deps'">
+            <div class="text-h5 q-mb-md">Отделы</div>
+            <div class="q-mb-md q-gutter-y-sm" style="max-width: 500px;">
+              <q-select
+                v-model="selectedOrgId"
+                :options="organizations"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                clearable
+                label="Организация"
+                outlined
+                dense
+              />
+              <div class="row items-center q-gutter-x-sm">
+                <q-input v-model="newDepName" label="Название отдела" outlined dense class="col-grow" @keyup.enter="createDepartment" />
+                <q-btn color="primary" label="Добавить" unelevated @click="createDepartment" />
+              </div>
+            </div>
+            <q-list bordered separator>
+              <q-item v-for="dep in departments" :key="dep.id">
+                <q-item-section>
+                  {{ dep.name }}
+                  <q-item-label caption>{{ organizations.find(o => o.id === dep.organization_id)?.name || '—' }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <div class="row q-gutter-x-xs">
+                    <q-btn flat round dense size="sm" color="primary" icon="edit" @click="editDepartment(dep)">
+                      <q-tooltip>Редактировать</q-tooltip>
+                    </q-btn>
+                    <q-btn flat round dense size="sm" color="negative" icon="delete" @click="deleteDepartment(dep.id)">
+                      <q-tooltip>Удалить</q-tooltip>
+                    </q-btn>
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
           </div>
-        </div>
-        <ul>
-          <li v-for="file in files" :key="file.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-           <span><strong>{{ file.name }}</strong> <a :href="`/api/files/${file.id}/download`" target="_blank" style="margin-left: 10px; color: blue;">(Скачать)</a></span>
-            <span><button @click="deleteFile(file.id)" style="color: red; cursor: pointer;">❌</button></span>
-          </li>
-        </ul>
-      </div>
 
-      <!-- ОПЕРАЦИИ -->
-      <div v-if="activeTab === 'ops'">
-        <h2>Кадровые операции</h2>
-        <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
-          <select v-model="opEmployeeId" style="padding: 8px;">
-            <option value="" disabled>Выберите сотрудника</option>
-            <option v-for="emp in employees" :key="emp.id" :value="emp.id">{{ emp.last_name }} {{ emp.first_name }}</option>
-          </select>
-          <select v-model="opType" style="padding: 8px;">
-            <option value="hire">Прием на работу</option>
-            <option value="salary_set">Установка зарплаты</option>
-            <option value="salary_change">Изменение зарплаты</option>
-            <option value="department_change">Изменение отдела</option>
-            <option value="dismissal">Увольнение</option>
-          </select>
-          <select v-model="opDepartmentId" style="padding: 8px;">
-            <option value="">Выберите отдел (если нужно)</option>
-            <option v-for="dep in departments" :key="dep.id" :value="dep.id">{{ dep.name }}</option>
-          </select>
-          <select v-model="opPositionId" style="padding: 8px;">
-            <option value="">Выберите должность (если нужно)</option>
-            <option v-for="pos in positions" :key="pos.id" :value="pos.id">{{ pos.name }}</option>
-          </select>
-          <input v-model="opSalary" type="number" placeholder="Зарплата (опционально)" style="padding: 8px;" />
-          <button @click="createOperation" style="padding: 8px 16px; background: #42b983; color: white; border: none; cursor: pointer;">Добавить</button>
-        </div>
-        <ul>
-          <li v-for="op in operations" :key="op.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-            <span><strong>{{ op.operation_type }}</strong> <span v-if="op.salary">(Зарплата: {{ op.salary }})</span></span>
-            <span><button @click="deleteOperation(op.id)" style="color: red; cursor: pointer;">❌</button></span>
-          </li>
-        </ul>
-      </div>
-
-      <!-- ИСТОРИЯ -->
-      <div v-if="activeTab === 'history'">
-        <h2>История изменений</h2>
-        <ul>
-          <li v-for="h in history" :key="h.id" style="padding: 10px; border-bottom: 1px solid #eee;">
-            <strong>{{ h.field_name }}</strong>: {{ h.old_value }} → {{ h.new_value }}
-            <span style="color: #888; font-size: 0.8em;">({{ h.changed_at ? h.changed_at.split('T')[0] : 'Дата неизвестна' }})</span>
-          </li>
-        </ul>
-      </div>
-
-      <!-- ПОЛЬЗОВАТЕЛИ -->
-      <div v-if="activeTab === 'users'">
-        <h2>Управление пользователями</h2>
-        <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #ccc; padding: 15px; border-radius: 8px;">
-          <h3>Добавить нового пользователя</h3>
-          <input v-model="newUserLastName" placeholder="Фамилия *" style="padding: 8px;" />
-          <input v-model="newUserFirstName" placeholder="Имя *" style="padding: 8px;" />
-          <input v-model="newUserMiddleName" placeholder="Отчество" style="padding: 8px;" />
-          <input v-model="newUserLogin" placeholder="Логин *" style="padding: 8px;" />
-          <input v-model="newUserPassword" type="password" placeholder="Пароль *" style="padding: 8px;" />
-          <select v-model="newUserRoleId" style="padding: 8px;">
-            <option value="" disabled>Выберите роль *</option>
-            <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
-          </select>
-          <button @click="createUser" style="padding: 8px 16px; background: #42b983; color: white; border: none; cursor: pointer;">Создать пользователя</button>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-          <thead>
-            <tr style="background: #f0f0f0;"><th>ФИО</th><th>Логин</th><th>Роль</th><th>Статус</th><th>Действия</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id" style="border-bottom: 1px solid #eee;">
-              <td>{{ user.last_name }} {{ user.first_name }} {{ user.middle_name }}</td>
-              <td>{{ user.login }}</td>
-              <td>{{ user.role_name }}</td>
-              <td>
-                <span v-if="user.deleted_at" style="color: red;">Удален</span>
-                <span v-else style="color: green;">Активен</span>
-              </td>
-              <td>
-                <button @click="openEditUser(user)" style="margin-right: 5px; cursor: pointer;">✏️</button>
-                <button @click="deleteUser(user.id)" style="color: red; cursor: pointer;">❌</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- МОДАЛКА РЕДАКТИРОВАНИЯ СОТРУДНИКА -->
-      <div v-if="isEditModalOpen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
-        <div style="background: white; padding: 20px; border-radius: 8px; width: 500px; max-height: 90vh; overflow-y: auto;">
-          <h3>Редактирование: {{ editingEmployee.last_name }} {{ editingEmployee.first_name }}</h3>
-          <h4>Основное</h4>
-          <input v-model="editingEmployee.phone" placeholder="Телефон" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <h4>Паспорт</h4>
-          <input v-model="editingEmployee.passport_series" placeholder="Серия (4 цифры)" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingEmployee.passport_number" placeholder="Номер (6 цифр)" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingEmployee.passport_issue_date" type="date" placeholder="Дата выдачи" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingEmployee.passport_issued_by" placeholder="Кем выдан" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingEmployee.passport_department_code" placeholder="Код подразделения" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <h4>Адрес регистрации</h4>
-          <input v-model="editingEmployee.address_region" placeholder="Область" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingEmployee.address_city" placeholder="Город/Населенный пункт" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingEmployee.address_street" placeholder="Улица" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingEmployee.address_house" placeholder="Дом" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingEmployee.address_building" placeholder="Корпус" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingEmployee.address_apartment" placeholder="Квартира" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-            <button @click="isEditModalOpen = false" style="padding: 8px 16px; cursor: pointer;">Отмена</button>
-            <button @click="saveEmployeeChanges" style="padding: 8px 16px; background: #42b983; color: white; border: none; cursor: pointer;">Сохранить</button>
+          <!-- ДОЛЖНОСТИ -->
+          <div v-if="activeTab === 'pos'">
+            <div class="text-h5 q-mb-md">Должности</div>
+            <div class="row items-center q-mb-md q-gutter-x-sm">
+              <q-input v-model="newPosName" label="Название должности" outlined dense class="col-grow" style="max-width: 400px;" @keyup.enter="createPosition" />
+              <q-btn color="primary" label="Добавить" unelevated @click="createPosition" />
+            </div>
+            <q-list bordered separator>
+              <q-item v-for="pos in positions" :key="pos.id">
+                <q-item-section>{{ pos.name }}</q-item-section>
+                <q-item-section side>
+                  <div class="row q-gutter-x-xs">
+                    <q-btn flat round dense size="sm" color="primary" icon="edit" @click="editPosition(pos)">
+                      <q-tooltip>Редактировать</q-tooltip>
+                    </q-btn>
+                    <q-btn flat round dense size="sm" color="negative" icon="delete" @click="deletePosition(pos.id)">
+                      <q-tooltip>Удалить</q-tooltip>
+                    </q-btn>
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
           </div>
-        </div>
-      </div>
 
-      <!-- МОДАЛКА РЕДАКТИРОВАНИЯ ПОЛЬЗОВАТЕЛЯ -->
-      <div v-if="isUserModalOpen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;">
-        <div style="background: white; padding: 20px; border-radius: 8px; width: 400px;">
-          <h3>Редактирование: {{ editingUser.login }}</h3>
-          <input v-model="editingUser.last_name" placeholder="Фамилия" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingUser.first_name" placeholder="Имя" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <input v-model="editingUser.middle_name" placeholder="Отчество" style="width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;" />
-          <select v-model="editingUser.role_id" style="width: 100%; padding: 8px; margin-bottom: 20px; box-sizing: border-box;">
-            <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
-          </select>
-          <div style="display: flex; justify-content: flex-end; gap: 10px;">
-            <button @click="isUserModalOpen = false" style="padding: 8px 16px; cursor: pointer;">Отмена</button>
-            <button @click="saveUserChanges" style="padding: 8px 16px; background: #42b983; color: white; border: none; cursor: pointer;">Сохранить</button>
+          <!-- СОТРУДНИКИ -->
+          <div v-if="activeTab === 'emp'">
+            <div class="text-h5 q-mb-md">Сотрудники</div>
+            <div class="row q-mb-md q-gutter-x-sm">
+              <q-input v-model="searchQuery" label="Поиск по ФИО" outlined dense clearable class="col-grow" style="max-width: 250px;" />
+              <q-select
+                v-model="filterDepartmentId"
+                :options="departments"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                clearable
+                label="Все отделы"
+                outlined
+                dense
+                style="min-width: 200px;"
+              />
+            </div>
+            <div class="row items-center q-mb-md q-gutter-x-sm">
+              <q-input v-model="newEmpLastName" label="Фамилия" outlined dense style="width: 160px;" />
+              <q-input v-model="newEmpFirstName" label="Имя" outlined dense style="width: 160px;" />
+              <q-input v-model="newEmpBirthDate" label="Дата рождения" type="date" outlined dense />
+              <q-btn color="primary" label="Добавить" unelevated @click="createEmployee" />
+            </div>
+            <q-table
+              :rows="filteredEmployees"
+              :columns="employeeColumns"
+              row-key="id"
+              flat
+              bordered
+              dense
+              :pagination="{ rowsPerPage: 0 }"
+            >
+              <template #body-cell-fio="props">
+                <q-td :props="props">{{ props.row.last_name }} {{ props.row.first_name }} {{ props.row.middle_name }}</q-td>
+              </template>
+              <template #body-cell-status="props">
+                <q-td :props="props">
+                  <q-badge :color="props.row.dismissed_at ? 'negative' : 'positive'" :label="props.row.dismissed_at ? 'Уволен' : 'Работает'" />
+                </q-td>
+              </template>
+              <template #body-cell-actions="props">
+                <q-td :props="props">
+                  <q-btn v-if="!props.row.dismissed_at" flat round dense size="sm" color="primary" icon="edit" @click="openEditModal(props.row)">
+                    <q-tooltip>Редактировать</q-tooltip>
+                  </q-btn>
+                </q-td>
+              </template>
+            </q-table>
           </div>
-        </div>
-      </div>
 
-    </div>
-  </div>
+          <!-- ФАЙЛЫ -->
+          <div v-if="activeTab === 'files'">
+            <div class="text-h5 q-mb-md">Файлы (Сканы)</div>
+            <div class="q-mb-md q-gutter-y-sm" style="max-width: 500px;">
+              <q-select
+                v-model="fileEmployeeId"
+                :options="employees"
+                option-value="id"
+                option-label="last_name"
+                emit-value
+                map-options
+                label="Сотрудник"
+                outlined
+                dense
+              />
+              <q-select
+                v-model="fileCategoryId"
+                :options="categories"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                clearable
+                label="Категория (необязательно)"
+                outlined
+                dense
+              />
+              <q-input v-model="fileName" label="Название файла" outlined dense />
+              <div class="row items-center q-gutter-x-sm">
+                <q-file v-model="fileInput" label="Выбрать файл" outlined dense clearable class="col-grow" />
+                <q-btn color="primary" label="Загрузить" unelevated @click="uploadFile" />
+              </div>
+            </div>
+            <q-list bordered separator>
+              <q-item v-for="file in files" :key="file.id">
+                <q-item-section>
+                  {{ file.name }}
+                  <q-item-label caption>
+                    <a :href="`/api/files/${file.id}/download`" target="_blank">Скачать</a>
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn flat round dense size="sm" color="negative" icon="delete" @click="deleteFile(file.id)">
+                    <q-tooltip>Удалить</q-tooltip>
+                  </q-btn>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+
+          <!-- ОПЕРАЦИИ -->
+          <div v-if="activeTab === 'ops'">
+            <div class="text-h5 q-mb-md">Кадровые операции</div>
+            <div class="q-mb-md q-gutter-y-sm" style="max-width: 500px;">
+              <q-select
+                v-model="opEmployeeId"
+                :options="employees"
+                option-value="id"
+                option-label="last_name"
+                emit-value
+                map-options
+                label="Сотрудник"
+                outlined
+                dense
+              />
+              <q-select
+                v-model="opType"
+                :options="[
+                  { label: 'Прием на работу', value: 'hire' },
+                  { label: 'Установка зарплаты', value: 'salary_set' },
+                  { label: 'Изменение зарплаты', value: 'salary_change' },
+                  { label: 'Изменение отдела', value: 'department_change' },
+                  { label: 'Увольнение', value: 'dismissal' }
+                ]"
+                emit-value
+                map-options
+                label="Тип операции"
+                outlined
+                dense
+              />
+              <q-select
+                v-model="opDepartmentId"
+                :options="departments"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                clearable
+                label="Отдел (если нужно)"
+                outlined
+                dense
+              />
+              <q-select
+                v-model="opPositionId"
+                :options="positions"
+                option-value="id"
+                option-label="name"
+                emit-value
+                map-options
+                clearable
+                label="Должность (если нужно)"
+                outlined
+                dense
+              />
+              <q-input v-model="opSalary" type="number" label="Зарплата (опционально)" outlined dense />
+              <q-btn color="primary" label="Добавить" unelevated @click="createOperation" />
+            </div>
+            <q-list bordered separator>
+              <q-item v-for="op in operations" :key="op.id">
+                <q-item-section>
+                  <q-item-label>{{ op.operation_type }}</q-item-label>
+                  <q-item-label v-if="op.salary" caption>Зарплата: {{ op.salary }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn flat round dense size="sm" color="negative" icon="delete" @click="deleteOperation(op.id)">
+                    <q-tooltip>Удалить</q-tooltip>
+                  </q-btn>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+
+          <!-- ИСТОРИЯ -->
+          <div v-if="activeTab === 'history'">
+            <div class="text-h5 q-mb-md">История изменений</div>
+            <q-list bordered separator>
+              <q-item v-for="h in history" :key="h.id">
+                <q-item-section>
+                  <q-item-label>{{ h.field_name }}: {{ h.old_value }} → {{ h.new_value }}</q-item-label>
+                  <q-item-label caption>{{ h.changed_at ? h.changed_at.split('T')[0] : 'Дата неизвестна' }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+
+          <!-- ПОЛЬЗОВАТЕЛИ (только админ) -->
+          <div v-if="activeTab === 'users'">
+            <div class="text-h5 q-mb-md">Управление пользователями</div>
+            <q-card class="q-mb-md" flat bordered style="max-width: 500px;">
+              <q-card-section class="text-h6">Добавить нового пользователя</q-card-section>
+              <q-card-section class="q-gutter-y-sm">
+                <q-input v-model="newUserLastName" label="Фамилия *" outlined dense />
+                <q-input v-model="newUserFirstName" label="Имя *" outlined dense />
+                <q-input v-model="newUserMiddleName" label="Отчество" outlined dense />
+                <q-input v-model="newUserLogin" label="Логин *" outlined dense />
+                <q-input v-model="newUserPassword" label="Пароль *" type="password" outlined dense />
+                <q-select
+                  v-model="newUserRoleId"
+                  :options="roles"
+                  option-value="id"
+                  option-label="name"
+                  emit-value
+                  map-options
+                  label="Роль *"
+                  outlined
+                  dense
+                />
+              </q-card-section>
+              <q-card-actions>
+                <q-btn color="primary" label="Создать пользователя" unelevated @click="createUser" />
+              </q-card-actions>
+            </q-card>
+
+            <q-table
+              :rows="users"
+              :columns="userColumns"
+              row-key="id"
+              flat
+              bordered
+              dense
+              :pagination="{ rowsPerPage: 0 }"
+            >
+              <template #body-cell-fio="props">
+                <q-td :props="props">{{ props.row.last_name }} {{ props.row.first_name }} {{ props.row.middle_name }}</q-td>
+              </template>
+              <template #body-cell-status="props">
+                <q-td :props="props">
+                  <q-badge :color="props.row.deleted_at ? 'negative' : 'positive'" :label="props.row.deleted_at ? 'Удален' : 'Активен'" />
+                </q-td>
+              </template>
+              <template #body-cell-actions="props">
+                <q-td :props="props">
+                  <div v-if="!props.row.deleted_at" class="row justify-end q-gutter-x-sm">
+                    <q-btn flat round dense size="sm" color="primary" icon="edit" @click="openEditUser(props.row)">
+                      <q-tooltip>Редактировать</q-tooltip>
+                    </q-btn>
+                    <q-btn flat round dense size="sm" color="negative" icon="delete" @click="deleteUser(props.row.id)">
+                      <q-tooltip>Удалить</q-tooltip>
+                    </q-btn>
+                  </div>
+                </q-td>
+              </template>
+            </q-table>
+          </div>
+
+          <!-- МОДАЛКА РЕДАКТИРОВАНИЯ СОТРУДНИКА -->
+          <q-dialog v-model="isEditModalOpen">
+            <q-card style="width: 560px; max-width: 95vw;">
+              <q-card-section class="text-h6">
+                Редактирование: {{ editingEmployee.last_name }} {{ editingEmployee.first_name }}
+              </q-card-section>
+              <q-card-section class="q-gutter-y-sm">
+                <div class="text-subtitle2">Основное</div>
+                <q-input v-model="editingEmployee.phone" label="Телефон" outlined dense />
+                <div class="text-subtitle2 q-mt-sm">Паспорт</div>
+                <q-input v-model="editingEmployee.passport_series" label="Серия (4 цифры)" outlined dense />
+                <q-input v-model="editingEmployee.passport_number" label="Номер (6 цифры)" outlined dense />
+                <q-input v-model="editingEmployee.passport_issue_date" label="Дата выдачи" type="date" outlined dense />
+                <q-input v-model="editingEmployee.passport_issued_by" label="Кем выдан" outlined dense />
+                <q-input v-model="editingEmployee.passport_department_code" label="Код подразделения" outlined dense />
+                <div class="text-subtitle2 q-mt-sm">Адрес регистрации</div>
+                <q-input v-model="editingEmployee.address_region" label="Область" outlined dense />
+                <q-input v-model="editingEmployee.address_city" label="Город / населенный пункт" outlined dense />
+                <q-input v-model="editingEmployee.address_street" label="Улица" outlined dense />
+                <q-input v-model="editingEmployee.address_house" label="Дом" outlined dense />
+                <q-input v-model="editingEmployee.address_building" label="Корпус" outlined dense />
+                <q-input v-model="editingEmployee.address_apartment" label="Квартира" outlined dense />
+              </q-card-section>
+              <q-card-actions align="right">
+                <q-btn flat label="Отмена" v-close-popup />
+                <q-btn color="primary" label="Сохранить" unelevated @click="saveEmployeeChanges" v-close-popup />
+              </q-card-actions>
+            </q-card>
+          </q-dialog>
+
+          <!-- МОДАЛКА РЕДАКТИРОВАНИЯ ПОЛЬЗОВАТЕЛЯ -->
+          <q-dialog v-model="isUserModalOpen">
+            <q-card style="width: 420px; max-width: 95vw;">
+              <q-card-section class="text-h6">Редактирование: {{ editingUser.login }}</q-card-section>
+              <q-card-section class="q-gutter-y-sm">
+                <q-input v-model="editingUser.last_name" label="Фамилия" outlined dense />
+                <q-input v-model="editingUser.first_name" label="Имя" outlined dense />
+                <q-input v-model="editingUser.middle_name" label="Отчество" outlined dense />
+                <q-select
+                  v-model="editingUser.role_id"
+                  :options="roles"
+                  option-value="id"
+                  option-label="name"
+                  emit-value
+                  map-options
+                  label="Роль"
+                  outlined
+                  dense
+                />
+              </q-card-section>
+              <q-card-actions align="right">
+                <q-btn flat label="Отмена" v-close-popup />
+                <q-btn color="primary" label="Сохранить" unelevated @click="saveUserChanges" v-close-popup />
+              </q-card-actions>
+            </q-card>
+          </q-dialog>
+
+        </q-page>
+      </q-page-container>
+    </template>
+
+  </q-layout>
 </template>
