@@ -717,7 +717,7 @@ onMounted(async () => {
         </div>
         <ul>
           <li v-for="file in files" :key="file.id" style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
-            <span><strong>{{ file.name }}</strong> <a :href="`http://localhost:3000/files/${file.id}/download`" target="_blank" style="margin-left: 10px; color: blue;">(Скачать)</a></span>
+           <span><strong>{{ file.name }}</strong> <a :href="`/api/files/${file.id}/download`" target="_blank" style="margin-left: 10px; color: blue;">(Скачать)</a></span>
             <span><button @click="deleteFile(file.id)" style="color: red; cursor: pointer;">❌</button></span>
           </li>
         </ul>

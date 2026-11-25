@@ -25,6 +25,8 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  const isProd = process.env.NODE_ENV === 'production';
+
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'super-secret-key',
@@ -32,8 +34,8 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: true,
-        sameSite: 'none',
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax',
         maxAge: 1000 * 60 * 60 * 24,
       },
     }),
