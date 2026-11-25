@@ -1,14 +1,19 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
-import session from 'express-session'; 
+import session from 'express-session';
 import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
-import passport from 'passport'; 
+import passport from 'passport';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.set('trust proxy', 1);
+
   app.setGlobalPrefix('api');
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -17,8 +22,9 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new AllExceptionsFilter());
+
   app.use(cookieParser());
-  
+
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'super-secret-key',
@@ -26,8 +32,8 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.COOKIE_SECURE === 'true',
-        sameSite: process.env.COOKIE_SAME_SITE === 'none' ? 'none' : 'lax',
+        secure: true,
+        sameSite: 'none',
         maxAge: 1000 * 60 * 60 * 24,
       },
     }),
@@ -43,4 +49,5 @@ async function bootstrap() {
 
   await app.listen(3000);
 }
+
 bootstrap();
